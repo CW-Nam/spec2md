@@ -1,0 +1,24 @@
+# 원본 규격(대용량 docx)과 생성 출력
+specs/
+raw/
+_workspace/*
+!_workspace/01_analyst_*.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+
+# 로컬 전용 Claude 설정
+.claude/settings.local.json
+
+# OS/에디터
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -73,6 +73,21 @@ def cmd_topics(a):
     return 0
 
 
+def cmd_link(a):
+    from .link import run_link
+    only = set(a.only.split(",")) if a.only else None
+    try:
+        st = run_link(a.raw, a.out, only)
+    except (OSError, ValueError) as e:
+        log(f"ERROR: {e}")
+        return 2
+    for code, counts in st.per_spec.items():
+        log(f"{code}: " + ", ".join(f"{k}={v}" for k, v in counts.items()))
+    log(f"link: {st.specs} spec(s), {st.files} file(s), "
+        + ", ".join(f"{k}={v}" for k, v in st.refs.items()))
+    return 0
+
+
 def main(argv=None):
     if hasattr(sys.stderr, "reconfigure"):
         sys.stderr.reconfigure(errors="replace")
@@ -99,6 +114,12 @@ def main(argv=None):
     t = sub.add_parser("topics", help="build topic files from topics/topics.json")
     t.add_argument("spec_dir")
     t.set_defaults(fn=cmd_topics)
+
+    k = sub.add_parser("link", help="add cross-reference links, anchors and backlinks")
+    k.add_argument("raw", nargs="?", default="raw")
+    k.add_argument("-o", "--out", default="linked")
+    k.add_argument("--only", help="comma-separated spec codes")
+    k.set_defaults(fn=cmd_link)
 
     a = ap.parse_args(argv)
     return a.fn(a)

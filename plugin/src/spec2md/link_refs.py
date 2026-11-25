@@ -176,7 +176,10 @@ def find_refs(text: str, spec: SpecIndex, corpus: CorpusIndex) -> list[Ref]:
             elide_needs_dot = word in _SINGULAR_CLAUSE
 
         # 나열: X and Y, X, Y and Z, X or Y, X to Y (뒤 번호는 단어 생략)
+        # 꼬리 전체 뒤에 규격 지시가 오면 나열로 확정하고 전부 남긴다. 지시가 없으면
+        # 쉼표만으로 이어진 꼬리와, 단수 조항 단어 뒤의 점 없는 번호부터는 버린다.
         keep = 1
+        dotted = True
         cur = m.end()
         while True:
             s = _SEP_RE.match(text, cur)
@@ -186,17 +189,19 @@ def find_refs(text: str, spec: SpecIndex, corpus: CorpusIndex) -> list[Ref]:
             if n is None or _overlaps(spans, starts, n.start(), n.end()):
                 break
             if elide_needs_dot and "." not in n.group(0):
-                break
+                dotted = False
             items.append((n.start(), n.end(), n.group(0)))
             cur = n.end()
-            if s.group("conj"):     # 쉼표만으로 이어진 꼬리는 나열로 보지 않는다
+            if s.group("conj") and dotted:
                 keep = len(items)
-        items = items[:keep]
-        cur = items[-1][1]
+        t = _TRAIL_RE.match(text, cur)
+        if t is None:
+            items = items[:keep]
+            cur = items[-1][1]
+            t = _TRAIL_RE.match(text, cur)
 
         # 규격 지시: 뒤쪽 우선, 없으면 바로 앞쪽
         number = None
-        t = _TRAIL_RE.match(text, cur)
         if t is not None:
             number = _desig_spec(t, spec)
             consumed = t.end()

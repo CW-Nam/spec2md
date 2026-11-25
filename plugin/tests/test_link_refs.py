@@ -137,6 +137,21 @@ def test_comma_without_conjunction_is_not_list(c):
     assert [r.text for r in find(c, "Table 4.2-1, 8.1-2")] == ["Table 4.2-1"]
 
 
+def test_designated_list_tail_kept_and_resolved_in_target_spec(c):
+    assert ids(find(c, "Tables 4.2-1, 4.2-2 of [6]")) == [
+        ("table", "4.2-1", "38.214", "missing_target"), ("table", "4.2-2", "38.214", "missing_target")]
+    assert [r.target_spec_number for r in find(c, "Tables 4.2-1, 4.2-2 of [6]")] == ["38.214", "38.214"]
+    refs = find(c, "clause 4.2 and 6 of [6]")
+    assert [(r.text, r.target_spec_number) for r in refs] == [("clause 4.2", "38.214"), ("6", "38.214")]
+    assert ids(find(c, "clauses 5.1.2, 9.1.5 in TS 38.214")) == [
+        ("clause", "5.1.2", "38.214", "resolved"), ("clause", "9.1.5", "38.214", "resolved")]
+
+
+def test_comma_tail_without_designator_still_not_list(c):
+    refs = find(c, "Tables 4.2-1, 4.2-2 for x")
+    assert [(r.text, r.target_spec_number) for r in refs] == [("Tables 4.2-1", "38.213")]
+
+
 def test_singular_clause_elision_needs_dot(c):
     assert [r.text for r in find(c, "clause 4.2 and 6 PRBs")] == ["clause 4.2"]
     assert [r.text for r in find(c, "clauses 4 and 9")] == ["clauses 4", "9"]

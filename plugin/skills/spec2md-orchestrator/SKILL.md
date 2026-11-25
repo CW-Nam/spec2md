@@ -14,6 +14,7 @@ description: "3GPP 규격 .docx를 LLM 위키용 조항·주제별 Markdown raw 
 | 1. 형식 분석 | 서브에이전트 위임 | 샘플 파일마다 독립 분석이고 보고서만 받으면 된다 |
 | 2. 개발·보정 루프 | 지속형 에이전트 협업 | 개발자와 검사자가 라운드마다 이전 맥락을 유지한 채 피드백을 주고받는다 |
 | 3. 일괄 변환·검사 | 메인 직접 실행 + 실패 시 서브에이전트 | 변환은 결정적 CLI이므로 에이전트가 필요 없다. 실패 원인 진단만 맡긴다 |
+| 3.5. 링크 | 메인 직접 실행 + 실패 시 서브에이전트 | 링크 생성·검사도 결정적 CLI다. ERROR 진단만 맡긴다 |
 | 4. 주제 묶음(선택) | 서브에이전트 위임, 규격 6개 이상이면 워크플로 조율 | 규격마다 독립 작업이다. 목록이 정해져 있어 많으면 코드로 분산한다 |
 
 이 스킬을 사용자가 불러오면 4단계의 Workflow 사용에 동의한 것으로 본다. 기본 동시 실행은 규격 5개 이하로 제한한다.
@@ -34,6 +35,7 @@ description: "3GPP 규격 .docx를 LLM 위키용 조항·주제별 Markdown raw 
 | `specs/` | 사용자 원본 docx. 읽기만 한다 |
 | `${CLAUDE_PLUGIN_ROOT}/src/spec2md/`, `${CLAUDE_PLUGIN_ROOT}/tests/` | 변환 도구 |
 | `raw/{spec}/` | 최종 산출물(출력 규약: `spec-md-conversion/references/output-contract.md`) |
+| `linked/{spec}/` | 링크·앵커·역참조가 들어간 사본(`raw/`는 그대로). 출력 규약 7절. `spec2md link`가 만들고 매번 다시 쓴다 |
 | `_workspace/` | 중간 산출물. `{phase}_{agent}_{artifact}.{ext}`. 사후 확인용으로 남긴다 |
 
 `{spec}`은 규격 코드다. docx 파일 이름에서 확장자를 빼고, 분할 파일 접미사가 있으면 그것도 뺀다(`38331-i10`, `36101-j60_s00-07.docx` → `36101-j60`). 같은 코드의 분할 파일들은 하나의 규격으로 합쳐 변환한다(출력 규약 1절). 분석·검사에서 분할 규격을 다룰 때는 모든 부분 파일을 함께 넘긴다(`inspect_docx.py P1.docx P2.docx …`).
@@ -50,6 +52,8 @@ description: "3GPP 규격 .docx를 LLM 위키용 조항·주제별 Markdown raw 
 | 도구가 있고 새 규격만 변환 | 3. 형식이 낯선 규격(새 Release, 다른 WG)이면 그 파일만 1을 먼저 실행 |
 | 특정 변환 규칙 수정 요청("표 변환 고쳐줘") | 2를 해당 규칙 범위로만 실행 → 3을 영향받는 규격만 |
 | 특정 규격만 다시("38.331만") | 3을 `--only`로 실행 |
+| 링크만 다시("링크 다시", "linked 갱신") | 3.5 (`spec-linking` 스킬). 변환 도구를 고친 경우 3을 먼저 |
+| 위키 만들어줘·위키에 질문 | 이 스킬이 다루지 않는다. `spec2md:llm-wiki`로 넘기고, `linked/`가 없거나 `raw/`보다 오래됐으면 3.5를 먼저 실행 |
 | 주제 묶음만 요청 | 4. 이미 `topics.json`이 있으면 기존 결과를 고치는 작업이다 |
 | `_workspace/`가 있고 완전히 새 입력 세트 | 기존 `_workspace/`를 `_workspace_{YYYYMMDD_HHMM}/`로 옮기고 새로 시작 |
 
@@ -98,6 +102,23 @@ description: "3GPP 규격 .docx를 LLM 위키용 조항·주제별 Markdown raw 
 3. FAIL·NO_OUTPUT·CHECK_ERROR가 있는 규격만 `subagent_type: "spec2md:conversion-checker"`로 단발 진단을 맡긴다(규격이 여럿이면 한 메시지에서 병렬로 호출). 보고서는 `_workspace/03_checker_report_{spec}.md`에 쓰게 한다.
 4. 진단 결과 도구를 고쳐야 하면 2단계로 돌아간다. developer가 아직 살아 있으면 SendMessage로 이어서 지시하고, 종료됐으면 같은 유형을 새 이름(`developer2`)으로 실행한 뒤 변경 요약 경로를 넘긴다. 수정한 뒤에는 영향받는 규격만 `--only`로 다시 검사한다. 원래 PASS였던 규격도 하나 이상 다시 검사해 회귀가 없는지 확인한다.
 
+### 3.5단계: 링크
+
+**실행 모드:** 메인 직접 실행. ERROR가 나면 서브에이전트에 진단을 위임한다.
+
+3단계에서 PASS한 규격을 대상으로 한다. 재변환했다면 항상 전체를 다시 링크한다(역참조 절이 규격 사이에 걸쳐 있다).
+
+1. 링크를 만든다.
+   ```
+   python "${CLAUDE_PLUGIN_ROOT}/scripts/spec2md.py" link raw -o linked
+   ```
+2. 독립 검사기로 확인한다.
+   ```
+   python "${CLAUDE_PLUGIN_ROOT}/skills/spec-linking/scripts/check_links.py" linked --raw raw --json _workspace/05_link_check.json
+   ```
+3. ERROR(종료 코드 1)가 있으면 `subagent_type: "spec2md:converter-developer"`에 `_workspace/05_link_check.json`의 `errors`와 원인 진단을 맡긴다. 도구를 고친 뒤 1~2를 다시 실행한다. 검사기를 느슨하게 바꿔 통과시키지 않는다.
+4. WARN(`missing_target` 상위)은 `spec-linking` 스킬의 개선 절차에 따라 보고에 요약한다. 사용자가 요청할 때만 규칙 개선을 진행한다.
+
 ### 4단계: 주제 묶음(선택)
 
 **실행 모드:** 규격 5개 이하면 서브에이전트 위임, 6개 이상이면 워크플로 조율
@@ -133,7 +154,7 @@ return { done, failed }
 
 ### 5단계: 보고
 
-사용자에게 다음을 알린다: 변환한 규격 수와 PASS 수, 규격별 파일 수와 파일 크기 범위, 남은 경고와 정상으로 본 이유, 실패·누락 규격과 원인, 주제 묶음 결과(실행한 경우), 산출물 위치. `_workspace/`는 지우지 않는다.
+사용자에게 다음을 알린다: 변환한 규격 수와 PASS 수, 규격별 파일 수와 파일 크기 범위, 남은 경고와 정상으로 본 이유, 실패·누락 규격과 원인, 링크 결과(규격별 resolved·missing 수, 검사 ERROR 0 여부), 주제 묶음 결과(실행한 경우), 산출물 위치. `_workspace/`는 지우지 않는다.
 
 ## 오류 처리
 

@@ -1,6 +1,6 @@
 # spec2md 출력 규약 (Output Contract)
 
-변환 도구(`spec2md`), 검사 스크립트(`conversion-check/scripts/check_output.py`), 주제 묶음(`topic-grouping`)이 모두 이 규약을 기준으로 동작한다. 규약을 바꾸면 세 곳을 함께 고친다. 하나만 고치면 검사가 거짓 실패하거나 거짓 통과한다.
+변환 도구(`spec2md`), 검사 스크립트(`conversion-check/scripts/check_output.py`), 주제 묶음(`topic-grouping`), 링크 검사기(`spec-linking/scripts/check_links.py`)가 모두 이 규약을 기준으로 동작한다. 규약을 바꾸면 해당하는 곳을 함께 고친다. 하나만 고치면 검사가 거짓 실패하거나 거짓 통과한다.
 
 ## 목차
 1. 디렉터리 구조
@@ -9,6 +9,7 @@
 4. manifest.json
 5. 본문 변환 규칙
 6. topics.json과 주제 파일
+7. linked/ 출력
 
 ---
 
@@ -163,3 +164,45 @@ source_file: "38331-i10.docx"
 
 - 주제 파일 `topics/{id}.md`: front matter(`spec`, `version`, `topic`, `title`, `clauses`) 다음에 지정 조항 파일 본문을 순서대로 이어 붙인다. 각 조항 앞에 `<!-- source: clauses/0042_5.3.5_rrc-reconfiguration.md -->` 주석을 둬 출처를 남긴다.
 - 조항 파일 원문은 고치지 않는다. 주제 파일은 언제든 `topics.json`에서 다시 만들 수 있는 파생물이다.
+
+## 7. linked/ 출력
+
+`spec2md link raw -o linked`가 `raw/`를 읽어 `linked/`를 만든다. `raw/`는 바뀌지 않으며, `linked/`는 raw 파일에 링크·앵커·역참조만 더한 사본이다. 검사기 `spec-linking/scripts/check_links.py`는 이 절을 기준으로 변환을 되돌려 raw와 바이트 단위로 비교한다.
+
+```
+linked/
+├── index.json                  # 전체 목적지 색인
+└── {spec}/
+    ├── manifest.json           # raw manifest + "link": {"refs": {status별 개수}}
+    ├── refs.json               # 찾은 참조 전체와 해석 결과
+    └── clauses/*.md            # raw와 같은 파일 이름
+```
+
+**앵커.** 표 캡션(`**Table N: …**`), 그림 캡션(`*Figure N: …*`), 파일 안 하위 제목 줄 바로 앞에 한 줄을 넣는다: `<a id="table-10.1-1"></a>`, `<a id="figure-…"></a>`, `<a id="clause-5.1.2"></a>`. 줄 전체가 앵커이며 뒤에 빈 줄을 두지 않는다. 같은 번호가 둘 이상(모호)이면 앵커를 만들지 않는다. 파일 맨 위가 목적지인 조항은 앵커 없이 파일 경로만 링크한다.
+
+**링크.** 해석된(`resolved`) 참조만 링크한다. 본문은 `[clause 5.1.2](상대경로.md#anchor)`, HTML 표 안은 `<a href="상대경로.md#anchor">clause 5.1.2</a>`. 상대 경로는 항상 `/` 구분이며 다른 규격은 `../../{code}/clauses/{file}.md`다. 링크 텍스트는 원문 글자 그대로다(`clause`·`Table` 같은 단어와 번호). 코드 펜스, 수식, HTML 태그, 제목·캡션 줄 안의 참조는 링크하지 않는다.
+
+**media.** 본문의 `](../media/`와 `src="../media/`는 `raw/{code}/media/`를 가리키도록 `linked/{code}/clauses`에서 본 상대 경로로 바꾼다.
+
+**refs.json.** `{"spec", "version", "refs": [...]}`. 항목: `from_file`, `from_clause`, `line`, `text`, `kind`(`table`/`figure`/`clause`), `target_spec`(규격 번호), `target_id`, `target_file`, `anchor`, `status`. `status`는 `resolved`, `missing_target`(규격은 있으나 번호가 없음), `missing_spec`(규격이 코퍼스에 없음), `ambiguous`(번호가 둘 이상) 중 하나다. 파일·줄·위치 순으로 정렬한다.
+
+**index.json.** 규격 코드마다 `spec_number`, `version`, `release`와 `clauses`·`tables`·`figures`(번호 → `{file, anchor}` 또는 `{ambiguous: true}`). 같은 규격 번호의 여러 버전이 있으면 가장 높은 버전의 코드를 대상으로 삼는다.
+
+**역참조 절.** 다른 파일에서 해석되어 이 파일을 가리키는 링크가 있으면 파일 끝에 붙는다(같은 파일 안 참조는 제외).
+
+```
+(raw 본문)
+
+<!-- spec2md:backlinks -->
+## Referenced by
+
+- [TS 38.213 10.1](../../38213-j50/clauses/0001_10.1_x.md) — clause 5.1.2
+```
+
+**줄바꿈 규칙.** raw 조항 파일은 정확히 `
+` 하나로 끝난다. 역참조 절은 `
+
+<!-- spec2md:backlinks -->`로 시작하므로, `
+
+<!-- spec2md:backlinks -->` 앞에서 자르고 `
+` 하나를 다시 붙이면 raw 끝으로 돌아온다. 나머지 변경(앵커 줄, 링크, media 접두사)도 모두 기계적으로 되돌릴 수 있어야 하며, 되돌린 결과가 raw와 같지 않으면 ERROR다. 모든 출력은 UTF-8, LF, BOM 없음이고 경로에 역슬래시가 없다.

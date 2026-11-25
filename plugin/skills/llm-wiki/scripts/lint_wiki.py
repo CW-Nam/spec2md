@@ -96,6 +96,11 @@ def split_front(text):
     return None, text
 
 
+# Markup dropped before slugging: HTML tags, `*`, backticks, and `_` only as an emphasis
+# marker at a word edge (GitHub keeps `_` inside words such as ssb_PositionsInBurst).
+MARKUP_RE = re.compile(r"<[^>]+>|[*`]|(?<!\w)_+|_+(?!\w)")
+
+
 def slug(heading):
     h = heading.strip().lower()
     h = re.sub(r"[^\w\- ]", "", h)
@@ -124,7 +129,7 @@ class Linter:
             for line in strip_fences(text).split("\n"):
                 m = HEADING_RE.match(line)
                 if m:
-                    s = slug(re.sub(r"<[^>]+>|[*_`]", "", m.group(1)))
+                    s = slug(MARKUP_RE.sub("", m.group(1)))
                     n = seen.get(s, 0)
                     seen[s] = n + 1
                     ids.add(s if n == 0 else f"{s}-{n}")

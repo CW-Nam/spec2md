@@ -147,4 +147,13 @@ def test_json_output(tmp_path):
 
 def test_missing_dir(tmp_path):
     rc, out = run(tmp_path / "nope")
-    assert rc == 2
+    assert rc == 2 and "not a directory" in out
+
+
+def test_heading_slug_keeps_underscores_in_words(tmp_path):
+    # GitHub keeps "_" inside words (ASN.1 field names) and drops emphasis/code markers.
+    w = build(tmp_path)
+    write(w / "features/a.md", fm() + "\n## ssb_PositionsInBurst and _emph_ `code` **bold**\n\n"
+          "[ok](#ssb_positionsinburst-and-emph-code-bold) [b](../concepts/b.md)\n")
+    rc, out = run(w)
+    assert rc == 0, out

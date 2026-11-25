@@ -6,7 +6,8 @@ Usage:
 
 ERROR checks
   * anchored links are semantically right: text number N <-> anchor table-N /
-    figure-N / clause-N (keyword Table/Figure/clause/section/Annex must match)
+    figure-N / clause-N (keyword Table/Figure/clause/subclause/section/Annex, either
+    initial case, singular or plural, must match)
   * every markdown link / <a href> that points to a .md file: the file exists
     in LINKED and the #anchor exists there as an `<a id="..."></a>` line
   * undoing the linker's changes (backlinks section, anchor lines, generated
@@ -36,16 +37,15 @@ SEP = "\n\n" + MARKER
 ANCHOR_LINE_RE = re.compile(r'^<a id="(?:table|figure|clause)-[^"\n]*"></a>\n', re.M)
 ID_RE = re.compile(r'<a id="([^"\n]+)"></a>')
 _HREF = r"[^)\s\"]*\.md(?:#[^)\s\"]*)?"
-_TEXT = (r"(?:(?:Tables?|tables?|Figures?|clauses?|subclauses?|sections?|Annex)[^\S\n]+)?"
-         r"[0-9A-Z][0-9A-Za-z.\-]*")
+_WORD = r"[Tt]ables?|[Ff]igures?|[Cc]lauses?|[Ss]ubclauses?|[Ss]ections?|[Aa]nnex(?:es)?"
+_TEXT = rf"(?:(?:{_WORD})[^\S\n]+)?[0-9A-Z][0-9A-Za-z.\-]*"
 MD_LINK_RE = re.compile(rf"\[({_TEXT})\]\(({_HREF})\)")
 A_LINK_RE = re.compile(rf'<a href="({_HREF})">({_TEXT})</a>')
 CHECK_MD_RE = re.compile(rf"\]\(({_HREF})\)")
 CHECK_A_RE = re.compile(rf'<a href="({_HREF})">')
-_KEYWORD_RE = re.compile(rf"(?:(Tables?|tables?|Figures?|clauses?|subclauses?|sections?|Annex)[^\S\n]+)?"
-                         rf"([0-9A-Z][0-9A-Za-z.\-]*)\Z")
+_KEYWORD_RE = re.compile(rf"(?:({_WORD})[^\S\n]+)?([0-9A-Z][0-9A-Za-z.\-]*)\Z")
 _KIND = {"table": "table", "figure": "figure", "clause": "clause", "subclause": "clause",
-         "section": "clause", "annex": "clause"}
+         "section": "clause", "annex": "clause", "annexe": "clause"}
 STATUSES = ("resolved", "missing_target", "missing_spec", "ambiguous")
 
 

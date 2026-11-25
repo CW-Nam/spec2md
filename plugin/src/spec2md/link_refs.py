@@ -10,26 +10,42 @@ from .link_index import CorpusIndex, SpecIndex, Target
 # 번호 모양. 각 부분이 점으로 시작하므로 나누는 방법이 하나뿐이라 되돌아가기가 폭주하지 않는다.
 _HEAD_SEG = r"(?:\d+[A-Za-z]?|[A-Z])"
 _CLAUSE_NUM = rf"{_HEAD_SEG}(?:\.[0-9A-Za-z]+)*"
-_CAPTION_NUM = rf"{_CLAUSE_NUM}-\d+[A-Za-z]?"
+# 5.2-1, 7.3.1-1aa, 5.2.2.6.2-2E-1. 다른 번호로 이어지면(4.2-1-4.2, 4.2-1.5) 캡션 번호가 아니다.
+_CAPTION_NUM = rf"{_CLAUSE_NUM}-\d+[A-Za-z]{{0,2}}(?:-\d+[A-Za-z]{{0,2}})*(?![.\-]\d)"
 _END = r"(?![0-9A-Za-z])"
 _SP = r"[^\S\n]+"          # 줄바꿈을 뺀 공백(NBSP 포함)
+_SP0 = r"[^\S\n]*"
 _SPEC = r"\d{2}\.\d{3}(?:-\d+)?(?!\d)"
+_TSPEC = r"\d{2}\.?\d{3}(?:-\d+)?(?!\d)"   # TS/TR 뒤에서는 점 없는 번호(TS36133)도 받는다
 
 _HEAD_RE = re.compile(
-    rf"\b(?:(?P<tk>Tables?|tables?|Figures?){_SP}(?P<tn>{_CAPTION_NUM})"
-    rf"|(?P<ck>clauses?|subclauses?|sections?|Annex){_SP}(?P<cn>{_CLAUSE_NUM})){_END}"
+    rf"\b(?:(?P<tk>[Tt]ables?|[Ff]igures?){_SP}(?P<tn>{_CAPTION_NUM})"
+    rf"|(?P<ck>[Cc]lauses?|[Ss]ubclauses?|[Ss]ections?|[Aa]nnex(?:es)?){_SP}(?P<cn>{_CLAUSE_NUM})){_END}"
 )
-_SEP_RE = re.compile(rf",?{_SP}(?P<conj>and|or|to){_SP}|,[^\S\n]*")
+_SEP_RE = re.compile(rf"{_SP0},?{_SP}(?P<conj>and|or|to){_SP}|(?P<slash>/)|{_SP0},{_SP0}")
+_SLASH_TAIL_RE = re.compile(r"(?:/[0-9A-Za-z][0-9A-Za-z.\-]*)+")   # 7.3.1.1.2-28/29/30 의 /29/30
 _CAPTION_NUM_RE = re.compile(rf"{_CAPTION_NUM}{_END}")
 _CLAUSE_NUM_RE = re.compile(rf"{_CLAUSE_NUM}{_END}")
 
+# 규격 지시: [3GPP ]TS|TR nn.nnn[ [n]], [n], [n, TS nn.nnn], [n. TS nn.nnn], [n TS nn.nnn],
+# [n, nn.nnn], [TS nn.nnn], [nn.nnn]
 _DESIG = (
-    rf"(?:(?<![A-Za-z])TS{_SP}(?P<ts>{_SPEC})(?:{_SP}\[(?P<tn>\d+)\])?"
-    rf"|\[(?P<bn>\d+)(?:,[^\S\n]*TS{_SP}(?P<bts>{_SPEC}))?\])"
+    rf"(?:(?<![A-Za-z])(?:3GPP{_SP})?T[SR]{_SP0}(?P<ts>{_TSPEC})(?:{_SP0}\[(?P<tn>\d+)\])?"
+    rf"|\[(?P<bn>\d+)\]"
+    rf"|\[(?:(?P<bn2>\d+)[.,]?{_SP0})?(?:(?:3GPP{_SP})?T[SR]{_SP0})?(?P<bts>{_SPEC})\]"
+    rf"|(?P<own>(?:present|this){_SP}(?:document|specification))\b)"
 )
-_TRAIL_RE = re.compile(rf"{_SP}(?:of|in){_SP}{_DESIG}")
-_PREFIX_RE = re.compile(rf"{_DESIG},?{_SP}\Z")
+_OF = (rf"{_SP}(?:(?:as{_SP})?(?:defined|specified|described|given){_SP})?"
+       rf"(?:of|in|from){_SP}(?:the{_SP})?")
+# 뒤쪽 지시: "of|in|from …", "defined in …", 또는 번호 바로 뒤의 대괄호("clause 5.4.2.1 [5, TS 38.212]")
+_TRAIL_RE = re.compile(rf"(?:{_OF}|{_SP0}(?=\[)){_DESIG}")
+# 다른 문서를 가리키는 듯하지만 3GPP 규격 지시로 읽히지 않는 꼬리(IETF RFC, IEEE Std, TS 오타 …).
+# 이때는 현재 규격 안에서 해석하지 않는다(틀린 링크 금지).
+_OTHER_RE = re.compile(rf"{_OF}(?:3GPP|T[SR](?:\d|\b)|RFC|IETF|IEEE|ITU|ETSI|ANSI|ISO|\[)")
+_PREFIX_RE = re.compile(rf"{_DESIG}(?:{_SP0},)?{_SP}\Z")
+_GAP_RE = re.compile(rf"{_SP}\Z")
 _PREFIX_WINDOW = 48
+_NO_SPEC = ""    # _resolve: 지시는 있으나 3GPP 규격으로 읽을 수 없음
 
 _SINGULAR_CLAUSE = {"clause", "subclause", "section"}
 
@@ -117,18 +133,57 @@ def _overlaps(spans: list[tuple[int, int]], starts: list[int], a: int, b: int) -
     return i + 1 < len(spans) and spans[i + 1][0] < b
 
 
+def _head(m: re.Match) -> tuple[str, str, str]:
+    """(kind, 소문자 단어, 번호)."""
+    if m.group("tk"):
+        word = m.group("tk")
+        kind = "figure" if word[0] in "Ff" else "table"
+        ident = m.group("tn")
+    else:
+        word = m.group("ck")
+        kind = "clause"
+        ident = m.group("cn")
+    return kind, word.lower(), ident
+
+
+def _chain(text: str, cur: int, kind: str, spans: list[tuple[int, int]],
+           starts: list[int]) -> tuple[list[tuple[int, int, str]], int]:
+    """cur 뒤로 '구분자 + 같은 종류 단어 + 번호 하나'가 되풀이되는 나열
+    (Table X, Table Y and Table Z / clause X or Annex Y)."""
+    out: list[tuple[int, int, str]] = []
+    while True:
+        s = _SEP_RE.match(text, cur)
+        if s is None:
+            break
+        h = _HEAD_RE.match(text, s.end())
+        if h is None or _overlaps(spans, starts, h.start(), h.end()):
+            break
+        k, _, ident = _head(h)
+        if k != kind:
+            break
+        out.append((h.start(), h.end(), ident))
+        cur = h.end()
+    return out, cur
+
+
+def _trail(text: str, cur: int) -> tuple[re.Match | None, bool]:
+    """cur 바로 뒤의 규격 지시와, 3GPP 규격으로 읽을 수 없는 다른 문서 지시가 있는지."""
+    t = _TRAIL_RE.match(text, cur)
+    return t, t is None and _OTHER_RE.match(text, cur) is not None
+
+
 def _desig_spec(m: re.Match, spec: SpecIndex) -> str:
-    if m.group("ts"):
-        return m.group("ts")
-    if m.group("bts"):
-        return m.group("bts")
-    n = m.group("tn") or m.group("bn")
-    return spec.references.get(n, "")
+    if m.group("own"):
+        return spec.spec_number
+    ts = m.group("ts") or m.group("bts")
+    if ts:
+        return ts if "." in ts else f"{ts[:2]}.{ts[2:]}"
+    return spec.references.get(m.group("bn"), _NO_SPEC)
 
 
 def _resolve(kind: str, ident: str, number: str | None, spec: SpecIndex,
              corpus: CorpusIndex) -> tuple[str, str | None, str, Target | None]:
-    if number == "":    # 참고문헌 [n]이 3GPP 규격이 아님(또는 목록에 없음)
+    if number == _NO_SPEC:    # 참고문헌 [n]이 3GPP 규격이 아님(목록에 없음), 또는 다른 문서 지시
         return "", None, "missing_spec", None
     if number is None or number == spec.spec_number:
         target_spec = spec
@@ -155,6 +210,7 @@ def find_refs(text: str, spec: SpecIndex, corpus: CorpusIndex) -> list[Ref]:
     refs: list[Ref] = []
     pos = 0
     consumed = 0    # 뒤쪽 지시로 쓴 텍스트 끝: 앞쪽 지시로 다시 쓰지 않는다
+    carry = None    # (끝, 규격 번호): 앞쪽 지시로 해석한 바로 앞 참조. 공백만 사이에 두고 이어지면 같이 쓴다
     while True:
         m = _HEAD_RE.search(text, pos)
         if m is None:
@@ -162,18 +218,10 @@ def find_refs(text: str, spec: SpecIndex, corpus: CorpusIndex) -> list[Ref]:
         pos = m.end()
         if _overlaps(spans, starts, m.start(), m.end()):
             continue
-        if m.group("tk"):
-            word = m.group("tk")
-            kind = "figure" if word.startswith("F") else "table"
-            num_re = _CAPTION_NUM_RE
-            items = [(m.start(), m.end(), m.group("tn"))]
-            elide_needs_dot = False
-        else:
-            word = m.group("ck")
-            kind = "clause"
-            num_re = _CLAUSE_NUM_RE
-            items = [(m.start(), m.end(), m.group("cn"))]
-            elide_needs_dot = word in _SINGULAR_CLAUSE
+        kind, word, ident = _head(m)
+        num_re = _CLAUSE_NUM_RE if kind == "clause" else _CAPTION_NUM_RE
+        items = [(m.start(), m.end(), ident)]
+        elide_needs_dot = word in _SINGULAR_CLAUSE
 
         # 나열: X and Y, X, Y and Z, X or Y, X to Y (뒤 번호는 단어 생략)
         # 꼬리 전체 뒤에 규격 지시가 오면 나열로 확정하고 전부 남긴다. 지시가 없으면
@@ -192,25 +240,46 @@ def find_refs(text: str, spec: SpecIndex, corpus: CorpusIndex) -> list[Ref]:
                 dotted = False
             items.append((n.start(), n.end(), n.group(0)))
             cur = n.end()
-            if s.group("conj") and dotted:
+            if (s.group("conj") or s.group("slash")) and dotted:
                 keep = len(items)
-        t = _TRAIL_RE.match(text, cur)
-        if t is None:
+        sl = _SLASH_TAIL_RE.match(text, cur)
+        t, other = _trail(text, sl.end() if sl else cur)
+        if t is None and not other and len(items) > keep:
             items = items[:keep]
             cur = items[-1][1]
-            t = _TRAIL_RE.match(text, cur)
+            t, other = _trail(text, cur)
 
         # 규격 지시: 뒤쪽 우선, 없으면 바로 앞쪽
+        p = None
+        if t is None and not other:
+            lo = max(consumed, m.start() - _PREFIX_WINDOW)
+            p = _PREFIX_RE.search(text, lo, m.start())
+            # 같은 단어가 되풀이되는 나열(Table X, Table Y and Table Z of [2])은 지시를 함께 쓴다.
+            # 첫 항목 바로 앞에 지시가 있으면 그 지시를 쓰고, 이때 나열 뒤 지시는 뒤 항목에만 남긴다.
+            if len(items) == 1:
+                chain, chain_end = _chain(text, cur, kind, spans, starts)
+                if chain:
+                    ct, cother = _trail(text, chain_end)
+                    if p is not None and ct is None and not cother:
+                        items += chain
+                        cur = chain_end
+                    elif p is None and (ct is not None or cother):
+                        items += chain
+                        cur = chain_end
+                        t, other = ct, cother
         number = None
-        if t is not None:
+        if other:
+            number = _NO_SPEC
+        elif t is not None:
             number = _desig_spec(t, spec)
             consumed = t.end()
             pos = max(pos, t.end())
-        else:
-            lo = max(consumed, m.start() - _PREFIX_WINDOW)
-            p = _PREFIX_RE.search(text, lo, m.start())
-            if p is not None:
-                number = _desig_spec(p, spec)
+        elif p is not None:
+            number = _desig_spec(p, spec)
+        elif carry is not None and carry[0] < m.start() and _GAP_RE.match(text[carry[0]:m.start()]):
+            # "TS 36.211 clause 4.2 Table 4.2-2"
+            number = carry[1]
+        carry = (cur, number) if t is None and not other and number is not None else None
         pos = max(pos, cur)
 
         for a, b, ident in items:

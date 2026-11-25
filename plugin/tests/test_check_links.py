@@ -155,3 +155,21 @@ def test_real_markdown_link_in_raw_is_kept(tmp_path):
 def test_bad_input_exit_2(tmp_path):
     r = _run(tmp_path, tmp_path / "nope", tmp_path / "nope2")
     assert r.returncode == 2
+
+
+def test_keyword_variants_pass(tmp_path):
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    make_spec(raw, "38213-j50", "38.213", "19.0.0", [
+        {"clause": "5", "title": "A", "level": 1, "parent": None, "file": "clauses/0001_5_a.md",
+         "body": "See Clause 5 and Section 5, Subclause 5, figure 5-1, annex B and Annexes B and 5.\n\n"
+                 "*Figure 5-1: F*\n"},
+        {"clause": "B", "title": "Annex B", "level": 1, "parent": None, "file": "clauses/0002_b_b.md",
+         "body": "Text.\n"},
+    ])
+    out = tmp_path / "linked"
+    run_link(str(raw), str(out))
+    t = (out / "38213-j50" / "clauses/0001_5_a.md").read_text(encoding="utf-8")
+    assert "[Clause 5](" in t and "[Annexes B](" in t and "[figure 5-1](" in t
+    r = _run(tmp_path, out, raw)
+    assert r.returncode == 0, r.stdout

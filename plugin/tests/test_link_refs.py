@@ -15,6 +15,8 @@ BODY_42 = (
 )
 BODY_81 = "**Table 8.1-2: A**\n\n| a |\n| - |\n\n**Table 8.1-2: A**\n\n| a |\n"
 BODY_5121 = "**Table 5.1.2.1-2: X**\n\n| a |\n| - |\n"
+BODY_61 = ("**Table 6.1.2.1.1-2: X**\n\n| a |\n| - |\n\n**Table 6.1.2.1.1-3: Y**\n\n| a |\n| - |\n\n"
+           "**Table 6.1.2.1.1-4: Z**\n\n| a |\n| - |\n")
 
 
 def _clauses_213():
@@ -34,6 +36,9 @@ def _clauses_214():
         dict(clause="5.1.2", title="R", level=3, parent="5.1", file="clauses/0002_5.1.2_r.md", body=""),
         dict(clause="5.1.2.1", title="S", level=4, parent="5.1.2", file="clauses/0003_5.1.2.1_s.md", body=BODY_5121),
         dict(clause="9.1.5", title="V", level=3, parent="9.1", file="clauses/0004_9.1.5_v.md", body=""),
+        dict(clause="6.1", title="W", level=2, parent="6", file="clauses/0005_6.1_w.md", body=BODY_61),
+        dict(clause="6.2.1", title="X", level=3, parent="6.2", file="clauses/0006_6.2.1_x.md", body=""),
+        dict(clause="7", title="Y", level=1, parent=None, file="clauses/0007_7_y.md", body=""),
     ]
 
 
@@ -209,3 +214,215 @@ def test_front_matter_and_math_in_html(c):
 
 def test_unclosed_fence_protects_rest(c):
     assert find(c, "```\nTable 4.2-1\n") == []
+
+
+# --- Task 9: real-corpus sentences ------------------------------------------------
+# Wrong-link class: the text names another document that the old designator pattern
+# missed, so the number was resolved inside the current spec.
+
+def test_designator_variants_resolve_in_named_spec(c):
+    # 38212-j40: "as defined in clause 7 of [6, TS38.214]."
+    assert ids(find(c, "as defined in clause 7 of [6, TS38.214]. If"))[0] == (
+        "clause", "7", "38.214", "resolved")
+    # 38211-j50: "configured as described in clause 8.1 of [5 TS 38.213]."
+    assert ids(find(c, "as described in clause 6.1 of [5 TS 38.214]. The"))[0] == (
+        "clause", "6.1", "38.214", "resolved")
+    # 38212-j40 / 38213-j50: "[6. TS 38.214]", "[6, 38.213]", "[TS 38.211]"
+    for s in ["clause 6.2.1 of [6. TS 38.214]", "clause 6.2.1 of [6, 38.214]",
+              "clause 6.2.1 of [TS 38.214].", "clause 6.2.1 of 3GPP TS 38.214 [6].",
+              "clause 6.2.1 of 3GPP TS 38.214 [6].", "clause 6.2.1 in TS38.214"]:
+        assert ids(find(c, s)) == [("clause", "6.2.1", "38.214", "resolved")], s
+
+
+def test_designator_variants_naming_specs_outside_corpus(c):
+    cases = {
+        # 24301-j80
+        "as specified in the clause 6.2.2 of 3GPP TS 23.161 [34].": "23.161",
+        # 36211-j30
+        "the number of codeblocks as defined in clause 5.1.2 of [36.212]": "36.212",
+        # 36101-j60 (HTML cell)
+        "modulated according to clause 5 of TS36.211</td></tr>": "36.211",
+        # 36133-j60
+        "modes are specified in section 7.1 in 3GPP TS 36.213.<br>N/A": "36.213",
+        "according to clause 5.3.3.19 in [TS 36.331], with": "36.331",
+        # 38106-j60
+        "described in clause 7.7.3 in TR 38.901 [29].": "38.901",
+    }
+    for s, spec in cases.items():
+        assert [(r.kind, r.target_spec_number, r.status) for r in find(c, s)] == [
+            ("clause", spec, "missing_spec")], s
+
+
+def test_dotless_spec_number(c):
+    # 36133-j60 change history: "CR on item title of table in clause 8.1.2.4.5.1 in TS36133 in Rel-13"
+    assert ids(find(c, "CR on item title of table in clause 4.2 in TS38213 in Rel-13")) == [
+        ("clause", "4.2", "38.213", "resolved")]
+    assert ids(find(c, "Correction of clause 5.1.2 in TS38214 |")) == [
+        ("clause", "5.1.2", "38.214", "resolved")]
+
+
+def test_other_document_guard_never_resolves_locally(c):
+    cases = [
+        # 24008-j50, 24501-j80, 36300-j20
+        "Time stamp format as defined in clause 4.2 of IETF RFC 5905 [169].",
+        "timer specified in clause 4.2 of IETF RFC 3748 [34] to infinite value.",
+        # 24501-j80
+        "MAC address as defined in clause 4.2 of IEEE Std 802 [43].",
+        "as specified in clause 4.2 of ITU-T Recommendation X.690",
+        "as defined in clause 4.2 of ETSI TS 102 221 [5]",
+        "see clause 4.2 of ISO/IEC 8859-1",
+        "see clause 4.2 of ANSI T1.106",
+        # 38101-1-j70 typo: "of TS 3801-2"
+        "refer to clause 4.2 of TS 3801-2 for",
+        "refer to clause 4.2 of the 3GPP Release 15",
+        "clause 4.2 in [X, Y]",
+    ]
+    for s in cases:
+        r = find(c, s)
+        assert [(x.text, x.status, x.target_spec_number, x.target) for x in r] == [
+            ("clause 4.2", "missing_spec", "", None)], s
+    # a list before the other-document designator is kept and none of it resolves
+    assert [(x.text, x.status) for x in find(c, "clauses 4.2 and 4 of IETF RFC 3748")] == [
+        ("clauses 4.2", "missing_spec"), ("4", "missing_spec")]
+    # own-spec designators still resolve locally
+    assert ids(find(c, "Table 4.2-1 of TS 38.213.")) == [("table", "4.2-1", "38.213", "resolved")]
+    assert ids(find(c, "Table 4.2-1 of 3GPP TS 38.213 [x]")) == [("table", "4.2-1", "38.213", "resolved")]
+
+
+# Repeated keyword lists: "Table X, Table Y and Table Z of [2]" share the designator.
+
+def test_repeated_keyword_list_shares_trailing_designator(c):
+    # 38213-j50 (exact): "one of the entries from table 6.1.2.1.1-2 or table 6.1.2.1.1-3 in [6, TS 38.214], if"
+    assert ids(find(c, "- one of the entries from table 6.1.2.1.1-2 or table 6.1.2.1.1-3 in [6, TS 38.214], if")) == [
+        ("table", "6.1.2.1.1-2", "38.214", "resolved"), ("table", "6.1.2.1.1-3", "38.214", "resolved")]
+    # 36212-j30: "used in Table 5.3.3A.2-2, Table 5.3.3A.2-3, Table 5.3.3A.2-4 and Table 5.3.3A.2-5 of [2]."
+    refs = find(c, "used in Table 6.1.2.1.1-2, Table 6.1.2.1.1-3, Table 6.1.2.1.1-4 and Table 5.1.2.1-2 of [6].")
+    assert [(r.text, r.target_spec_number, r.status) for r in refs] == [
+        ("Table 6.1.2.1.1-2", "38.214", "resolved"), ("Table 6.1.2.1.1-3", "38.214", "resolved"),
+        ("Table 6.1.2.1.1-4", "38.214", "resolved"), ("Table 5.1.2.1-2", "38.214", "resolved")]
+    # 38214-j50: "according to clause 9, clause 11.1 and clause 11.2A of [6, TS 38.213]"
+    assert ids(find(c, "according to clause 4.2, clause 5.1.2 and clause 9.1.5 of [6, TS 38.214] or")) == [
+        ("clause", "4.2", "38.214", "missing_target"), ("clause", "5.1.2", "38.214", "resolved"),
+        ("clause", "9.1.5", "38.214", "resolved")]
+    # other-document designator after the chain: nothing resolves locally
+    assert [r.status for r in find(c, "clause 4.2 and clause 4 of IETF RFC 3748")] == [
+        "missing_spec", "missing_spec"]
+
+
+def test_repeated_keyword_list_not_shared_across_groups_or_kinds(c):
+    # 38213-j50: "determined from clauses 9, 9.2.5 and 9.2.6 or clause 6.1 of [6, TS 38.214]"
+    assert ids(find(c, "determined from clauses 4, 4.2 and 8.1 or clause 6.1 of [6, TS 38.214].")) == [
+        ("clause", "4", "38.213", "resolved"), ("clause", "4.2", "38.213", "resolved"),
+        ("clause", "8.1", "38.213", "resolved"),
+        ("clause", "6.1", "38.214", "resolved")]
+    # 38212-j40: "according to Table 7.3.1.1.2-37 and Clause 6.2.1 of [6, TS 38.214], where"
+    assert ids(find(c, "according to Table 4.2-1 and clause 6.2.1 of [6, TS 38.214], where")) == [
+        ("table", "4.2-1", "38.213", "resolved"), ("clause", "6.2.1", "38.214", "resolved")]
+    # no designator at all: each item stays in the current spec
+    assert ids(find(c, "see Table 4.2-1 and Table 8.1-2.")) == [
+        ("table", "4.2-1", "38.213", "resolved"), ("table", "8.1-2", "38.213", "ambiguous")]
+
+
+def test_prefix_designator_carries_over_repeated_keyword(c):
+    # 38331-j40: "(see TS 38.214 [19], clause 6.1.2 and clause 6.3)."
+    assert ids(find(c, "(see TS 38.214 [19], clause 5.1.2 and clause 9.1.5)")) == [
+        ("clause", "5.1.2", "38.214", "resolved"), ("clause", "9.1.5", "38.214", "resolved")]
+    # 36331-j40: "TS 36.213 [23], Table 7.1.6-1 and Table 7.1.7.2.7-1. Value 0"
+    assert ids(find(c, "TS 38.214 [23], Table 5.1.2.1-2 and Table 6.1.2.1.1-2. Value 0")) == [
+        ("table", "5.1.2.1-2", "38.214", "resolved"), ("table", "6.1.2.1.1-2", "38.214", "resolved")]
+    # a trailing designator after the chain wins over the prefix
+    assert ids(find(c, "TS 38.214 [6], clause 5.1.2 and clause 4.2 of the present document")) == [
+        ("clause", "5.1.2", "38.214", "resolved"), ("clause", "4.2", "38.213", "resolved")]
+
+
+def test_present_document_is_own_spec(c):
+    # 24008-j50: "... as specified in clause 10 of the present document"
+    assert ids(find(c, "[6], clause 4.2 of the present document")) == [("clause", "4.2", "38.213", "resolved")]
+    assert ids(find(c, "Table 4.2-1 in this specification")) == [("table", "4.2-1", "38.213", "resolved")]
+
+
+def test_clause_and_annex_chain_share_designator(c):
+    # 24501-j80: "due to reasons specified in clause 4.4.6 or Annex C in 3GPP TS 23.122 [5], then"
+    assert [(r.text, r.target_spec_number, r.status) for r in find(
+        c, "due to reasons specified in clause 4.4.6 or Annex C in 3GPP TS 23.122 [5], then")] == [
+        ("clause 4.4.6", "23.122", "missing_spec"), ("Annex C", "23.122", "missing_spec")]
+
+
+def test_slash_list(c):
+    # 38101-5-j60: "as described in Annex A.5.1.1/A.5.2.1 in TS 38.101-1 [5])"
+    assert [(r.text, r.target_spec_number) for r in find(c, "described in Annex A.5.1.1/A.5.2.1 in TS 38.101-1 [5])")] == [
+        ("Annex A.5.1.1", "38.101-1"), ("A.5.2.1", "38.101-1")]
+    assert [r.text for r in find(c, "see clause 4.2/8.1 for")] == ["clause 4.2", "8.1"]
+    # 38212-j40: "Table 7.3.1.1.2-28/29/30/31 of [5]" -- partial numbers are not references
+    assert [(r.text, r.target_spec_number) for r in find(c, "Table 4.2-1/2/3 of [6]")] == [("Table 4.2-1", "38.214")]
+
+
+def test_capitalised_and_lowercase_keyword_variants(c):
+    # 38212-j40: "RI in CSI part 1 according to Clause 5.2.2.2.1 in [6, TS38.214] of all"
+    assert ids(find(c, "RI in CSI part 1 according to Clause 5.1.2 in [6, TS38.214] of all")) == [
+        ("clause", "5.1.2", "38.214", "resolved")]
+    # 38212-j40: "according to Table 7.3.1.1.2-37 and Clause 6.2.1 of [6, TS 38.214], where"
+    assert ids(find(c, "according to Table 4.2-1 and Clause 6.2.1 of [6, TS 38.214], where")) == [
+        ("table", "4.2-1", "38.213", "resolved"), ("clause", "6.2.1", "38.214", "resolved")]
+    assert [(r.text, r.kind, r.target_id) for r in find(
+        c, "Section 4.2 and Subclause 8.1, figure 4.2-1, Clauses 4 and 9, Annexes B and C, annex B.")] == [
+        ("Section 4.2", "clause", "4.2"), ("Subclause 8.1", "clause", "8.1"),
+        ("figure 4.2-1", "figure", "4.2-1"), ("Clauses 4", "clause", "4"), ("9", "clause", "9"),
+        ("Annexes B", "clause", "B"), ("C", "clause", "C"), ("annex B", "clause", "B")]
+    assert find(c, "Clause The") == [] and find(c, "annexed 4.2") == []
+
+
+def test_caption_number_suffix_shapes(c):
+    # 36212-j30: "Table 5.2.2.6.2-2E-1"; 36101-j60: "Table 7.3.1-1aa"
+    assert [(r.text, r.target_id) for r in find(c, "see Table 5.2.2.6.2-2E-1 and Table 7.3.1-1aa.")] == [
+        ("Table 5.2.2.6.2-2E-1", "5.2.2.6.2-2E-1"), ("Table 7.3.1-1aa", "7.3.1-1aa")]
+    # a number that runs on into another dotted number is not a caption number
+    assert find(c, "Tables 4.2-1-4.2 x") == []
+
+
+def test_from_designator(c):
+    # 38101-5-j60: "Additional parameters are specified in Table A.3.1-1 and Table A.3.2.1-1 from TS 38.101-1 [5]."
+    assert [(r.text, r.target_spec_number, r.status) for r in find(
+        c, "Note 1: Additional parameters are specified in Table A.3.1-1 and Table A.3.2.1-1 from TS 38.101-1 [5].")] == [
+        ("Table A.3.1-1", "38.101-1", "missing_spec"), ("Table A.3.2.1-1", "38.101-1", "missing_spec")]
+
+
+def test_prefix_with_space_before_comma(c):
+    # 36133-j60: "Defined in TS 36.304 , subclause 5.2.4.7 for E-UTRAN"
+    assert ids(find(c, "Defined in TS 38.214 , subclause 5.1.2 for E-UTRAN")) == [
+        ("clause", "5.1.2", "38.214", "resolved")]
+
+
+def test_prefix_carries_to_adjacent_reference(c):
+    # 36133-j60: "| As specified in TS 36.211 clause 4.2 Table 4.2-2 |"
+    assert ids(find(c, "| As specified in TS 38.214 clause 5.1.2 Table 5.1.2.1-2 |")) == [
+        ("clause", "5.1.2", "38.214", "resolved"), ("table", "5.1.2.1-2", "38.214", "resolved")]
+    # not across other words
+    assert ids(find(c, "TS 38.214 clause 5.1.2 and then Table 4.2-1")) == [
+        ("clause", "5.1.2", "38.214", "resolved"), ("table", "4.2-1", "38.213", "resolved")]
+
+
+def test_defined_in_designator(c):
+    # 38101-5-j60: "MCS Index is based on MCS table 6.1.4.1-1 defined in TS 38.214 [14]."
+    assert ids(find(c, "NOTE 2: MCS Index is based on MCS table 6.1.2.1.1-2 defined in TS 38.214 [14].")) == [
+        ("table", "6.1.2.1.1-2", "38.214", "resolved")]
+    assert ids(find(c, "see clause 5.1.2 as specified in [6].")) == [("clause", "5.1.2", "38.214", "resolved")]
+    assert [r.status for r in find(c, "the clause 4.2 defined in IETF RFC 5905")] == ["missing_spec"]
+
+
+def test_bracket_designator_right_after_number(c):
+    # 38214-j50: "based on the values defined in Clause 5.4.2.1 [5, TS 38.212]"
+    assert [(r.target_spec_number, r.status) for r in find(
+        c, "based on the values defined in Clause 5.4.2.1 [5, TS 38.212]")] == [("38.212", "missing_spec")]
+    # 38101-5-j60: "OCNG Pattern as described in Annex A.5.2.1 [15] and" ([15] is not in this spec's list)
+    assert [(r.target_spec_number, r.status) for r in find(c, "as described in Annex A.5.2.1 [15] and")] == [
+        ("", "missing_spec")]
+    assert ids(find(c, "clause 5.1.2 [6]")) == [("clause", "5.1.2", "38.214", "resolved")]
+    assert ids(find(c, "Table 4.2-1 [dB]")) == [("table", "4.2-1", "38.213", "resolved")]
+
+
+def test_space_before_list_comma(c):
+    # 38101-3-j70: "specified in clause 6.2.2, 6.2A.2 , and 6.2D.2 of TS 38.101-2 [3] apply."
+    assert [(r.text, r.target_spec_number) for r in find(
+        c, "specified in clause 6.2.2, 6.2A.2 , and 6.2D.2 of TS 38.101-2 [3] apply.")] == [
+        ("clause 6.2.2", "38.101-2"), ("6.2A.2", "38.101-2"), ("6.2D.2", "38.101-2")]

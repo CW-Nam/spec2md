@@ -1,6 +1,7 @@
 # 원본 규격(대용량 docx)과 생성 출력
-specs/
-raw/
+/specs/
+/raw/
+/linked/
 _workspace/*
 !_workspace/01_analyst_*.md
 

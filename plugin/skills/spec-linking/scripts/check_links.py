@@ -5,6 +5,8 @@ Usage:
   python check_links.py LINKED --raw RAW [--json OUT.json]
 
 ERROR checks
+  * anchored links are semantically right: text number N <-> anchor table-N /
+    figure-N / clause-N (keyword Table/Figure/clause/section/Annex must match)
   * every markdown link / <a href> that points to a .md file: the file exists
     in LINKED and the #anchor exists there as an `<a id="..."></a>` line
   * undoing the linker's changes (backlinks section, anchor lines, generated
@@ -40,6 +42,10 @@ MD_LINK_RE = re.compile(rf"\[({_TEXT})\]\(({_HREF})\)")
 A_LINK_RE = re.compile(rf'<a href="({_HREF})">({_TEXT})</a>')
 CHECK_MD_RE = re.compile(rf"\]\(({_HREF})\)")
 CHECK_A_RE = re.compile(rf'<a href="({_HREF})">')
+_KEYWORD_RE = re.compile(rf"(?:(Tables?|tables?|Figures?|clauses?|subclauses?|sections?|Annex)[^\S\n]+)?"
+                         rf"([0-9A-Z][0-9A-Za-z.\-]*)\Z")
+_KIND = {"table": "table", "figure": "figure", "clause": "clause", "subclause": "clause",
+         "section": "clause", "annex": "clause"}
 STATUSES = ("resolved", "missing_target", "missing_spec", "ambiguous")
 
 
@@ -124,6 +130,25 @@ class Checker:
                 if ids is None or anchor not in ids:
                     self.err("broken_anchor", f"{where_f}:{line}", f"broken anchor: {href}")
 
+    def check_semantics(self, code, rel, text):
+        """Anchor must be {table|figure|clause}-N with the same N as the link text."""
+        where_f = f"{code}/{rel}"
+        pairs = [(m.group(2), m.group(1), m.start()) for m in MD_LINK_RE.finditer(text)]
+        pairs += [(m.group(1), m.group(2), m.start()) for m in A_LINK_RE.finditer(text)]
+        for href, label, pos in pairs:
+            anchor = href.partition("#")[2]
+            if not anchor:
+                continue
+            m = _KEYWORD_RE.match(label)
+            kind, _, ident = anchor.partition("-")
+            ok = m is not None and ident == m.group(2) and kind in ("table", "figure", "clause")
+            if ok and m.group(1):
+                ok = _KIND[m.group(1).lower().rstrip("s")] == kind
+            if not ok:
+                line = text.count("\n", 0, pos) + 1
+                self.err("anchor_mismatch", f"{where_f}:{line}",
+                         f"anchor mismatch: text {label!r} links to #{anchor}")
+
     def check_spec(self, code):
         info = {"files": 0, "status": {s: 0 for s in STATUSES}}
         rman_path = os.path.join(self.raw, code, "manifest.json")
@@ -145,6 +170,7 @@ class Checker:
             info["files"] += 1
             ltext = read_bytes(lpath).decode("utf-8")
             self.check_links(code, rel, ltext)
+            self.check_semantics(code, rel, ltext)
             want = read_bytes(os.path.join(self.raw, code, *rel.split("/")))
             got = reverse(ltext, prefix).encode("utf-8")
             if got != want:

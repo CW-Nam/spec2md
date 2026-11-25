@@ -104,11 +104,39 @@ def test_broken_file_link(tmp_path):
     assert r.returncode == 1 and "broken link" in r.stdout
 
 
-def test_backlinks_section_edit_detected_or_reversed(tmp_path):
+def test_body_edit_before_backlinks_marker_detected(tmp_path):
     raw, out = _build(tmp_path)
-    # extra text after the backlinks marker is cut with the section; text before it is not
     _rw(out / "38214-j50" / F14, lambda s: s.replace("Resource allocation", "Resource  allocation"))
-    assert _run(tmp_path, out, raw).returncode == 1
+    r = _run(tmp_path, out, raw)
+    assert r.returncode == 1 and "differs from raw" in r.stdout
+
+
+def test_junk_after_backlinks_marker_is_part_of_cut_section(tmp_path):
+    # Everything from the marker on is treated as the generated section and cut, so junk
+    # appended there is NOT detected (documented limitation); the link check still runs on it.
+    raw, out = _build(tmp_path)
+    _rw(out / "38214-j50" / F14, lambda s: s + "junk\n")
+    assert _run(tmp_path, out, raw).returncode == 0
+
+
+def test_trailing_newline_removed_detected(tmp_path):
+    raw, out = _build(tmp_path)
+    _rw(out / "38213-j50" / "clauses/0000_2_r.md", lambda s: s.rstrip("\n"))
+    r = _run(tmp_path, out, raw)
+    assert r.returncode == 1 and "differs from raw" in r.stdout
+
+
+def test_anchor_mismatch(tmp_path):
+    raw, out = _build(tmp_path)
+    # another existing anchor in the same file: point the Table 10.1-1 link at clause-10.1
+    p = out / "38213-j50" / F13
+    t = p.read_text(encoding="utf-8")
+    assert "(0001_10.1_x.md#table-10.1-1)" in t
+    _rw(p, lambda s: s.replace('<a id="clause-10.1"></a>\n', "")
+        .replace("](0001_10.1_x.md#table-10.1-1)", "](0001_10.1_x.md#figure-10.1-1)"))
+    _rw(p, lambda s: s.replace("**Table 10.1-1: T**", '<a id="figure-10.1-1"></a>\n**Table 10.1-1: T**', 1))
+    r = _run(tmp_path, out, raw)
+    assert r.returncode == 1 and "anchor mismatch" in r.stdout
 
 
 def test_real_markdown_link_in_raw_is_kept(tmp_path):

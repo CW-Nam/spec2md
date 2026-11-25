@@ -33,4 +33,4 @@ model: sonnet
 - `check_topics.py`가 실패하면 고쳐서 다시 실행한다. 세 번 고쳐도 실패하면 남은 문제를 그대로 보고한다.
 
 ## 협업
-- 리더가 `python -m spec2md topics raw/{spec}/`로 topics.json에서 주제 파일을 만든다. 이 에이전트는 그 명령을 실행하지 않아도 된다.
+- 리더가 `python "${CLAUDE_PLUGIN_ROOT}/scripts/spec2md.py" topics raw/{spec}/`로 topics.json에서 주제 파일을 만든다. 이 에이전트는 그 명령을 실행하지 않아도 된다.

@@ -9,8 +9,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "src"))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-INSPECT = os.path.join(ROOT, ".claude", "skills", "3gpp-docx-structure", "scripts", "inspect_docx.py")
-CHECK = os.path.join(ROOT, ".claude", "skills", "conversion-check", "scripts", "check_output.py")
+INSPECT = os.path.join(ROOT, "skills", "3gpp-docx-structure", "scripts", "inspect_docx.py")
+CHECK = os.path.join(ROOT, "skills", "conversion-check", "scripts", "check_output.py")
 
 
 @pytest.fixture(scope="session")

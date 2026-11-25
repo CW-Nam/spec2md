@@ -13,16 +13,16 @@ description: "3GPP 규격 .docx를 조항(clause) 단위 Markdown raw 파일로 
 
 ```
 specs/                     # 사용자가 넣어 둔 원본 .docx (읽기 전용으로 취급)
-src/spec2md/
+${CLAUDE_PLUGIN_ROOT}/src/spec2md/
 ├── __init__.py            # __version__
-├── __main__.py            # python -m spec2md
+├── __main__.py            # python "${CLAUDE_PLUGIN_ROOT}/scripts/spec2md.py"
 ├── cli.py                 # convert / batch / topics 하위 명령
 ├── reader.py              # docx 열기, 스타일 해석, 본문 요소 순회
 ├── blocks.py              # 문단·표·코드·그림·수식 → 중간 블록
 ├── render.py              # 블록 → Markdown
 ├── split.py               # 제목 기준 분할, manifest 생성
 └── topics.py              # topics.json → 주제 파일
-tests/                     # pytest. 작은 docx 픽스처는 코드로 생성
+${CLAUDE_PLUGIN_ROOT}/tests/                     # pytest. 작은 docx 픽스처는 코드로 생성
 requirements.txt           # 버전 고정
 raw/                       # 출력 (output-contract.md)
 ```
@@ -30,9 +30,9 @@ raw/                       # 출력 (output-contract.md)
 ## CLI
 
 ```
-python -m spec2md convert specs/38331-i10.docx -o raw/ [--split-depth 3] [--max-chars 60000]
-python -m spec2md batch specs/ -o raw/ [--split-depth 3]
-python -m spec2md topics raw/38331-i10/
+python "${CLAUDE_PLUGIN_ROOT}/scripts/spec2md.py" convert specs/38331-i10.docx -o raw/ [--split-depth 3] [--max-chars 60000]
+python "${CLAUDE_PLUGIN_ROOT}/scripts/spec2md.py" batch specs/ -o raw/ [--split-depth 3]
+python "${CLAUDE_PLUGIN_ROOT}/scripts/spec2md.py" topics raw/38331-i10/
 ```
 
 - `--split-depth`: 이 레벨 이하의 제목마다 파일을 만든다. 기본값 3. 규격마다 알맞은 값이 다르다. 38.331처럼 깊은 규격은 4가 필요할 수 있다.

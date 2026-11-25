@@ -1,0 +1,1 @@
+{"name": "spec2md-local", "owner": {"name": "jefre"}, "plugins": [{"name": "spec2md", "source": "./plugin", "description": "3GPP spec conversion, linking and LLM wiki"}]}

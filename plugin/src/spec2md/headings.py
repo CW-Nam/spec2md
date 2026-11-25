@@ -1,7 +1,7 @@
 """Heading interpretation (output-contract.md section 3).
 
 This is a port of the reference implementation in
-``.claude/skills/3gpp-docx-structure/scripts/inspect_docx.py`` (``para_style``,
+``skills/3gpp-docx-structure/scripts/inspect_docx.py`` (``para_style``,
 ``parse_clause``, ``clause_level``, ``clause_parent``, ``norm_heading``,
 ``para_text``). The checker compares our manifest with that script's outline,
 so these functions must give identical results; ``tests/test_headings.py``

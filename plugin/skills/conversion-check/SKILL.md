@@ -11,11 +11,11 @@ description: "spec2md가 만든 Markdown raw 출력(raw/{spec}/)이 원본 docx�
 
 1. 원본 구조 보고서가 없으면 만든다.
    ```
-   python .claude/skills/3gpp-docx-structure/scripts/inspect_docx.py specs/{file}.docx --json _workspace/01_inspect_{spec}.json
+   python ${CLAUDE_PLUGIN_ROOT}/skills/3gpp-docx-structure/scripts/inspect_docx.py specs/{file}.docx --json _workspace/01_inspect_{spec}.json
    ```
 2. 검사 스크립트를 실행한다.
    ```
-   python .claude/skills/conversion-check/scripts/check_output.py --inspect _workspace/01_inspect_{spec}.json --out raw/{spec} --json _workspace/{phase}_checker_{spec}.json
+   python ${CLAUDE_SKILL_DIR}/scripts/check_output.py --inspect _workspace/01_inspect_{spec}.json --out raw/{spec} --json _workspace/{phase}_checker_{spec}.json
    ```
    종료 코드 0은 오류 없음(경고는 있을 수 있음), 1은 오류 있음, 2는 입력 파일 문제다.
 3. 스크립트가 잡지 못하는 부분은 표본으로 직접 본다. 원본에서 표·ASN.1·그림·부속서가 많은 조항을 3~5개 고르고, 원본 텍스트(`inspect_docx.py --samples`나 XML 직접 조회)와 출력 파일을 나란히 비교한다. 다음을 확인한다.
@@ -56,5 +56,5 @@ description: "spec2md가 만든 Markdown raw 출력(raw/{spec}/)이 원본 docx�
 
 ## 하지 않는 일
 
-- 변환 도구 코드(`src/`)와 출력 파일(`raw/`)을 고치지 않는다. 검사자가 고치면 무엇이 고쳐졌는지 추적할 수 없다. 문제는 보고서로 넘긴다.
+- 변환 도구 코드(`${CLAUDE_PLUGIN_ROOT}/src/`)와 출력 파일(`raw/`)을 고치지 않는다. 검사자가 고치면 무엇이 고쳐졌는지 추적할 수 없다. 문제는 보고서로 넘긴다.
 - 검사 스크립트의 판정 기준을 검사 도중에 느슨하게 바꾸지 않는다. 기준이 잘못됐다고 판단하면 보고서에 근거를 적어 리더에게 제안한다.

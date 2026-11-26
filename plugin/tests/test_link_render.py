@@ -109,3 +109,13 @@ def test_multiple_anchors_one_line_each_sorted(tmp_path):
     spec.tables["9-9"] = Target("other.md", "table-9-9", 2)
     out = render(text, [], spec, "f.md", "m/", [])
     assert out == 'x\n<a id="clause-1"></a>\n<a id="table-1-1"></a>\n**Table 1-1: A**\n'
+
+
+def test_nested_table_reference_after_inner_table(tmp_path):
+    text, spec, corpus = _setup(tmp_path)
+    text += ("\n<table><tr><td><table><tr><td>x</td></tr></table>"
+             " then see Table 4.2-1 here</td></tr></table>\n")
+    refs = find_refs(text, spec, corpus)
+    out = render(text, refs, spec, FILE, PREFIX, [])
+    assert "then see <a href=\"0003_4.2_t.md#table-4.2-1\">Table 4.2-1</a> here" in out
+    assert "</table> then see [" not in out

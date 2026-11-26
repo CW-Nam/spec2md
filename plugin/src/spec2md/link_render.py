@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from .link_index import SpecIndex, Target
 from .link_refs import Ref
 
-_TABLE_RE = re.compile(r"<table\b.*?(?:</table\s*>|\Z)", re.I | re.S)
+_TABLE_TAG_RE = re.compile(r"<(/?)table\b[^>]*>?", re.I)
 BACKLINKS_MARKER = "<!-- spec2md:backlinks -->"
 
 
@@ -30,9 +30,28 @@ def href(from_code: str, from_file: str, to_code: str, target: Target) -> str:
     return f"{path}#{target.anchor}" if target.anchor else path
 
 
+def table_spans(text: str) -> list[tuple[int, int]]:
+    """바깥 <table> ... </table> 구간(중첩은 깊이로 센다). 닫히지 않으면 끝까지."""
+    spans: list[tuple[int, int]] = []
+    depth, begin = 0, 0
+    for m in _TABLE_TAG_RE.finditer(text):
+        if m.group(1):
+            if depth:
+                depth -= 1
+                if depth == 0:
+                    spans.append((begin, m.end()))
+        else:
+            if depth == 0:
+                begin = m.start()
+            depth += 1
+    if depth:
+        spans.append((begin, len(text)))
+    return spans
+
+
 def render(text: str, refs: list[Ref], spec: SpecIndex, from_file: str,
            media_prefix: str, backlinks: list[Backlink]) -> str:
-    table_spans = [m.span() for m in _TABLE_RE.finditer(text)]
+    spans = table_spans(text)
     line_starts = [0] + [m.end() for m in re.finditer("\n", text)]
 
     # (시작, 끝, 대체 문자열, 순서): 뒤에서부터 적용한다. 같은 위치면 링크가 앵커 줄보다 먼저.
@@ -41,7 +60,7 @@ def render(text: str, refs: list[Ref], spec: SpecIndex, from_file: str,
         if r.status != "resolved" or r.target is None or r.target_code is None:
             continue
         link = href(spec.code, from_file, r.target_code, r.target)
-        in_table = any(a <= r.start and r.end <= b for a, b in table_spans)
+        in_table = any(a <= r.start and r.end <= b for a, b in spans)
         rep = f'<a href="{link}">{r.text}</a>' if in_table else f"[{r.text}]({link})"
         edits.append((r.start, r.end, rep, 0))
 

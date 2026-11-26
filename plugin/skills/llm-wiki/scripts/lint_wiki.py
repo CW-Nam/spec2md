@@ -11,6 +11,8 @@ ERROR checks
     (relative to the page's own folder); a `#anchor` must match an
     `<a id="...">` in the target or a GitHub-style slug of one of its headings
     (lowercase, punctuation other than space/hyphen removed, spaces -> hyphens)
+  * every front-matter `sources` entry (path relative to the wiki's parent
+    folder, optional `#anchor`) names an existing file / anchor (same rule)
   * front matter (`---` block of `key: value` lines) has type, title, sources,
     specs, updated; `sources` (one-line JSON array) is non-empty; `type` is one
     of feature|concept|spec|answer
@@ -187,6 +189,19 @@ class Linter:
                 src = None
             if not isinstance(src, list) or not src:
                 self.err("empty_sources", rel, f"{rel}: empty sources (need a non-empty JSON array)")
+            else:
+                root = os.path.dirname(self.wiki)  # sources are relative to the work folder
+                for s in src:
+                    if not isinstance(s, str):
+                        continue
+                    path, _, anchor = s.partition("#")
+                    ap = os.path.normpath(os.path.join(root, *unquote(path).split("/")))
+                    if not os.path.isfile(ap):
+                        self.err("bad_source", rel, f"{rel}: sources: file not found: {s}")
+                    elif anchor and ap.endswith(".md"):
+                        ids = self.anchors(ap)
+                        if ids is None or unquote(anchor) not in ids:
+                            self.err("bad_source", rel, f"{rel}: sources: anchor not found: {s}")
         if "type" in fm and fm["type"] not in TYPES:
             self.err("bad_type", rel, f"{rel}: bad type {fm['type']!r} (expected {'|'.join(TYPES)})")
 

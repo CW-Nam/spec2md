@@ -29,6 +29,7 @@ python "${CLAUDE_SKILL_DIR}/scripts/check_links.py" linked --raw raw --json _wor
 | 구분 | 내용 |
 | --- | --- |
 | ERROR | `.md` 링크와 `<a href>`의 파일이 없음(`broken link`), `#anchor`가 대상 파일에 `<a id>`로 없음(`broken anchor`) |
+| ERROR | 링크 텍스트의 번호와 앵커가 의미상 다름(`anchor mismatch`: `Table N`은 `table-N`, `Figure N`은 `figure-N`, 조항은 `clause-N`), `<table>` 안에 Markdown 링크가 남음(`markdown link inside <table>`) |
 | ERROR | 사본에서 앵커 줄·생성된 링크·역참조 절·media 접두사를 되돌린 결과가 raw와 바이트 단위로 다름(`differs from raw`) |
 | ERROR | raw의 본문 파일이 linked에 없음(`missing`) |
 | WARN | 규격별 status 분포(`resolved`, `missing_target`, `missing_spec`, `ambiguous`), `missing_target` 상위 20개 `(target_spec, kind, target_id, 개수)` |

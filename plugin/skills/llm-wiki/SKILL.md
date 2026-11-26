@@ -82,6 +82,7 @@ python "${CLAUDE_SKILL_DIR}/scripts/lint_wiki.py" wiki --json _workspace/06_wiki
 | 구분 | 내용 |
 | --- | --- |
 | ERROR | 상대 링크의 파일이 없음, `#anchor`가 대상 파일의 `<a id>`나 제목 slug에 없음(재변환 후 사라진 출처 포함) |
+| ERROR | front matter `sources` 항목의 파일이 없거나 `#anchor`가 대상에 없음(본문 링크와 같은 규칙, 경로는 위키 상위 폴더 기준) |
 | ERROR | front matter에 `type`·`title`·`sources`·`specs`·`updated` 중 빠진 키, `sources`가 비어 있거나 한 줄 JSON 배열이 아님, `type`이 `feature`·`concept`·`spec`·`answer`가 아님 |
 | ERROR | `index.md`에 링크되지 않은 페이지, `index.md` 없음 |
 | ERROR | `log.md`에서 `## [`로 시작하는 줄이 SCHEMA 8절 형식(`## [YYYY-MM-DD]`, 작업 이름 `ingest`·`query`·`lint` 중 하나, 세로 막대, 텍스트 순서)이 아님 |

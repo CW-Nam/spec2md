@@ -79,6 +79,8 @@ def build_spec_index(spec_dir: str) -> SpecIndex:
         if e.get("file"):
             idx.clauses.setdefault(e["clause"], Target(e["file"], None, 1))
 
+    manifest_keys = set(idx.clauses)
+
     # 2) 파일 본문 스캔
     for e in entries:
         rel = e.get("file")
@@ -113,7 +115,8 @@ def build_spec_index(spec_dir: str) -> SpecIndex:
             m = _SUB_RE.match(line)
             if m:
                 c = m.group(1)
-                idx.clauses.setdefault(c, Target(rel, anchor_id("clause", c), lineno))
+                if c not in manifest_keys:  # 매니페스트 조항이 우선, 제목끼리 중복이면 모호
+                    _add(idx.clauses, c, Target(rel, anchor_id("clause", c), lineno))
                 continue
         if e["clause"] == "2":
             for m in _REF_RE.finditer("\n".join(lines[start:])):

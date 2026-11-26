@@ -137,3 +137,16 @@ def test_fileless_clause_followed_by_unnumbered_sibling(tmp_path):
     idx = build_spec_index(d)
     assert idx.clauses["6.7.3.2"] == Target("clauses/1046_carrierconfigdedicated-nb.md", None, 1)
     assert "6.7.4" not in idx.clauses    # a numbered sibling is not a child
+
+
+def test_duplicate_heading_clause_is_ambiguous(tmp_path):
+    body_a = "## 8.17.3 FDD\n\ntext\n"
+    body_b = "## 8.17.3 TDD\n\ntext\n\n## 8.17.4 Only\n"
+    d = make_spec(tmp_path, "36133-j50", "36.133", "19.5.0", [
+        dict(clause="8.17", title="A", level=2, parent="8", file="clauses/0001_8.17_a.md", body=body_a),
+        dict(clause="8.18", title="B", level=2, parent="8", file="clauses/0002_8.18_b.md", body=body_b),
+    ])
+    idx = build_spec_index(d)
+    assert idx.clauses["8.17.3"].ambiguous
+    assert not idx.clauses["8.17.4"].ambiguous
+    assert not idx.clauses["8.17"].ambiguous

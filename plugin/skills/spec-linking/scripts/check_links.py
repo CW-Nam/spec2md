@@ -8,6 +8,7 @@ ERROR checks
   * anchored links are semantically right: text number N <-> anchor table-N /
     figure-N / clause-N (keyword Table/Figure/clause/subclause/section/Annex, either
     initial case, singular or plural, must match)
+  * no Markdown link inside an HTML <table> region (must be <a href>; nesting counted)
   * every markdown link / <a href> that points to a .md file: the file exists
     in LINKED and the #anchor exists there as an `<a id="..."></a>` line
   * undoing the linker's changes (backlinks section, anchor lines, generated
@@ -130,6 +131,27 @@ class Checker:
                 if ids is None or anchor not in ids:
                     self.err("broken_anchor", f"{where_f}:{line}", f"broken anchor: {href}")
 
+    def check_table_links(self, code, rel, text):
+        """A Markdown link inside an HTML <table> region does not render: must be <a href>."""
+        spans, depth, begin = [], 0, 0
+        for m in re.finditer(r"<(/?)table\b[^>]*>?", text, re.I):
+            if m.group(1):
+                if depth:
+                    depth -= 1
+                    if depth == 0:
+                        spans.append((begin, m.end()))
+            else:
+                if depth == 0:
+                    begin = m.start()
+                depth += 1
+        if depth:
+            spans.append((begin, len(text)))
+        for m in CHECK_MD_RE.finditer(text):
+            if any(a <= m.start() < b for a, b in spans):
+                line = text.count("\n", 0, m.start()) + 1
+                self.err("markdown_link_in_table", f"{code}/{rel}:{line}",
+                         f"markdown link inside <table>: {m.group(1)}")
+
     def check_semantics(self, code, rel, text):
         """Anchor must be {table|figure|clause}-N with the same N as the link text."""
         where_f = f"{code}/{rel}"
@@ -171,6 +193,7 @@ class Checker:
             ltext = read_bytes(lpath).decode("utf-8")
             self.check_links(code, rel, ltext)
             self.check_semantics(code, rel, ltext)
+            self.check_table_links(code, rel, ltext)
             want = read_bytes(os.path.join(self.raw, code, *rel.split("/")))
             got = reverse(ltext, prefix).encode("utf-8")
             if got != want:

@@ -139,6 +139,16 @@ def test_anchor_mismatch(tmp_path):
     assert r.returncode == 1 and "anchor mismatch" in r.stdout
 
 
+def test_markdown_link_in_table_detected(tmp_path):
+    raw, out = _build(tmp_path)
+    p = out / "38213-j50" / F13
+    assert '<td>see <a href="../../38214-j50/clauses/0001_5.1.2_y.md">clause 5.1.2</a>' in p.read_text(encoding="utf-8")
+    _rw(p, lambda s: s.replace('<a href="../../38214-j50/clauses/0001_5.1.2_y.md">clause 5.1.2</a>',
+                               "[clause 5.1.2](../../38214-j50/clauses/0001_5.1.2_y.md)"))
+    r = _run(tmp_path, out, raw)
+    assert r.returncode == 1 and "markdown link inside <table>" in r.stdout
+
+
 def test_real_markdown_link_in_raw_is_kept(tmp_path):
     raw = tmp_path / "raw"
     raw.mkdir()

@@ -73,7 +73,7 @@ def test_end_to_end(tmp_path):
     man = json.loads(_read(f"{out}/38213-j50/manifest.json"))
     assert man["link"]["refs"]["resolved"] >= 3 and man["spec_number"] == "38.213"
     refs = json.loads(_read(f"{out}/38213-j50/refs.json"))
-    assert refs["spec"] == "38213-j50" or refs["spec"]
+    assert refs["spec"] == "38213-j50"
     r0 = [r for r in refs["refs"] if r["target_spec"] == "38.214"][0]
     assert r0["from_clause"] == "10.1" and r0["status"] == "resolved"
     assert r0["target_file"] == F14 and r0["anchor"] is None

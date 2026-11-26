@@ -157,3 +157,20 @@ def test_heading_slug_keeps_underscores_in_words(tmp_path):
           "[ok](#ssb_positionsinburst-and-emph-code-bold) [b](../concepts/b.md)\n")
     rc, out = run(w)
     assert rc == 0, out
+
+
+def _page(w, sources):
+    write(w / "features/a.md", fm(sources=sources) + f"\nText [t]({SRC}#table-7.1-1) and [b](../concepts/b.md).\n")
+
+
+def test_source_file_and_anchor_must_exist(tmp_path):
+    w = build(tmp_path)
+    _page(w, '["linked/38321-j40/clauses/a.md#table-7.1-1"]')
+    rc, out = run(w)
+    assert rc == 0, out
+    _page(w, '["linked/38321-j40/clauses/nope.md"]')
+    rc, out = run(w)
+    assert rc == 1 and "sources" in out and "nope.md" in out
+    _page(w, '["linked/38321-j40/clauses/a.md#table-9-9"]')
+    rc, out = run(w)
+    assert rc == 1 and "sources" in out and "table-9-9" in out

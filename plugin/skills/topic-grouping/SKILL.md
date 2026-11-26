@@ -30,7 +30,7 @@ description: "spec2md로 조항별로 나눈 3GPP 규격 출력(raw/{spec}/manif
 작성한 뒤 다음 명령으로 확인한다.
 
 ```
-python ${CLAUDE_SKILL_DIR}/scripts/check_topics.py raw/{spec}
+python "${CLAUDE_SKILL_DIR}/scripts/check_topics.py" raw/{spec}
 ```
 
 종료 코드가 0이어야 한다. 0이 아니면 다음 중 하나가 남아 있다는 뜻이다. 배정되지 않은 조항, manifest에 없는 조항 번호, 잘못된 형식이나 중복된 id. 스크립트가 표시하는 `large`/`tiny` 주제는 원칙 4에 따라 검토한다.

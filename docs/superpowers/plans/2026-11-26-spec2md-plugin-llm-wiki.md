@@ -73,7 +73,7 @@ CLAUDE.md                                  # 수정: 개발 안내·변경 이�
 **Interfaces:**
 - Produces: `python plugin/scripts/spec2md.py <cmd> ...` = 기존 `python -m spec2md <cmd> ...`. 스킬 안에서는 `python "${CLAUDE_PLUGIN_ROOT}/scripts/spec2md.py"`.
 
-- [ ] **Step 1: 파일 이동**
+- [x] **Step 1: 파일 이동**
 
 ```bash
 mkdir -p plugin/.claude-plugin plugin/scripts plugin/skills plugin/agents
@@ -82,26 +82,26 @@ for d in .claude/skills/*/; do git mv "$d" plugin/skills/; done
 for f in .claude/agents/*.md; do git mv "$f" plugin/agents/; done
 ```
 
-- [ ] **Step 2: 매니페스트 작성**
+- [x] **Step 2: 매니페스트 작성**
 
 `plugin/.claude-plugin/plugin.json`: `{"name": "spec2md", "version": "0.2.0", "description": "3GPP spec .docx -> clause Markdown raw, cross-reference links, and an LLM wiki", "author": {"name": "jefre"}}`
 
 `.claude-plugin/marketplace.json`: `{"name": "spec2md-local", "owner": {"name": "jefre"}, "plugins": [{"name": "spec2md", "source": "./plugin", "description": "3GPP spec conversion, linking and LLM wiki"}]}`
 
-- [ ] **Step 3: 실행 스크립트 `plugin/scripts/spec2md.py`**
+- [x] **Step 3: 실행 스크립트 `plugin/scripts/spec2md.py`**
 
 `os.path.dirname(__file__)/../src`를 `sys.path` 맨 앞에 넣고 `from spec2md.cli import main; raise SystemExit(main())`. lxml import 실패 시 `pip install -r <plugin>/requirements.txt` 안내를 stderr에 쓰고 종료 코드 3.
 
-- [ ] **Step 4: `conftest.py` 경로 수정**
+- [x] **Step 4: `conftest.py` 경로 수정**
 
 `ROOT`는 이제 `plugin/`이다. `INSPECT = os.path.join(ROOT, "skills", "3gpp-docx-structure", "scripts", "inspect_docx.py")`, `CHECK = os.path.join(ROOT, "skills", "conversion-check", "scripts", "check_output.py")`.
 
-- [ ] **Step 5: 테스트 통과 확인**
+- [x] **Step 5: 테스트 통과 확인**
 
 Run: `cd plugin && python -m pytest -q`
 Expected: `115 passed`
 
-- [ ] **Step 6: 스킬·에이전트 본문 경로 치환**
+- [x] **Step 6: 스킬·에이전트 본문 경로 치환**
 
 규칙(모든 `plugin/skills/*/SKILL.md`, `references/*.md`, `plugin/agents/*.md`):
 - 자기 스킬의 `.claude/skills/<self>/...` → `${CLAUDE_SKILL_DIR}/...`
@@ -112,25 +112,25 @@ Expected: `115 passed`
 - 동결 해시 대상 `src/spec2md/*.py` → `${CLAUDE_PLUGIN_ROOT}/src/spec2md/*.py`
 - 데이터 경로(`3gpp-specs/`, `raw/`, `_workspace/`)는 그대로.
 
-- [ ] **Step 7: 남은 옛 경로가 없는지 확인**
+- [x] **Step 7: 남은 옛 경로가 없는지 확인**
 
 Run: `grep -rnE "\.claude/(skills|agents)|python -m spec2md" plugin/ CLAUDE.md`
 Expected: 출력 없음
 
-- [ ] **Step 8: 실행 스크립트와 플러그인 검증**
+- [x] **Step 8: 실행 스크립트와 플러그인 검증**
 
 Run: `python plugin/scripts/spec2md.py --help` → Expected: `convert`, `batch`, `topics` 표시
 Run: `claude plugin validate ./plugin` 그리고 `claude plugin validate ./` → Expected: 오류 없음
 
-- [ ] **Step 9: `CLAUDE.md` 갱신**
+- [x] **Step 9: `CLAUDE.md` 갱신**
 
 하네스 호출 문장을 "`spec2md:spec2md-orchestrator` 스킬"로 바꾸고, "## 개발 환경" 절을 추가한다: 이 저장소는 로컬 마켓플레이스 루트이며 `plugin/`이 플러그인이다. 로컬 마켓플레이스 플러그인은 복사되지 않고 제자리에서 로드되므로 `plugin/` 수정은 `/reload-plugins` 후 바로 반영된다. 설치 명령 두 줄(`claude plugin marketplace add ./`, `claude plugin install spec2md@spec2md-local --scope project`). 변경 이력 표에 `2026-11-26 | 플러그인 구조로 이동(plugin/), 경로 변수화 | 전체 | 배포·위키 확장` 행 추가.
 
-- [ ] **Step 10: 사용자에게 설치를 요청**
+- [x] **Step 10: 사용자에게 설치를 요청**
 
 설치는 프로젝트 설정(`enabledPlugins`)을 바꾸므로 실행자가 하지 않는다. 위 두 명령을 사용자에게 보여 주고 실행 후 알려 달라고 요청한다. 설치 뒤 새 세션에서 `spec2md:spec2md-orchestrator`가 스킬 목록에 보이는지 사용자와 확인한다.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add -A plugin .claude-plugin CLAUDE.md .claude
@@ -176,7 +176,7 @@ def build_corpus_index(raw_root: str) -> CorpusIndex   # raw_root 아래 manifes
 
 색인 규칙: 표 캡션 줄 `^\*\*Table (번호)\s*:?` , 그림 캡션 줄 `^\*Figure (번호)\s*:?` (번호 = `[0-9A-Z][0-9A-Za-z.]*-\d+[A-Za-z]?`). 파일 안 하위 조항은 `^#{2,6} (조항번호) ` 줄 → anchor `clause-…`. 파일 첫 `# ` 제목 조항은 anchor None. 참고문헌은 clause `"2"` 파일의 `**[n]**: 3GPP T[SR] (\d{2}\.\d{3}(?:-\d+)?)`. 같은 규격에서 같은 표·그림 번호가 두 번 나오면 `ambiguous=True`. 버전 비교는 `tuple(map(int, version.split(".")))`.
 
-- [ ] **Step 1: 실패하는 테스트 작성** (`test_link_index.py`)
+- [x] **Step 1: 실패하는 테스트 작성** (`test_link_index.py`)
 
 합성 규격 `38213-j50`(38.213, 19.5.0): clause `2`(참고문헌 `- **[6]**: 3GPP TS 38.214: "NR; …"`), `4`(file None), `4.2`(본문에 `**Table 4.2-1: Foo $x$**`, `*Figure 4.2-1: Bar*`, `## 4.2.1 Sub`), `8.1`(`**Table 8.1-2: A**`가 두 번).
 
@@ -205,10 +205,10 @@ def test_anchor_id():
     assert anchor_id("table", "8.1-2") == "table-8.1-2"
 ```
 
-- [ ] **Step 2: 실패 확인** — Run: `cd plugin && python -m pytest tests/test_link_index.py -q` → Expected: FAIL (`ModuleNotFoundError: spec2md.link_index`)
-- [ ] **Step 3: `link_index.py` 구현** (위 Interfaces·규칙대로)
-- [ ] **Step 4: 통과 확인** — 같은 명령 → PASS
-- [ ] **Step 5: Commit** — `git commit -m "feat(link): 목적지 색인"`
+- [x] **Step 2: 실패 확인** — Run: `cd plugin && python -m pytest tests/test_link_index.py -q` → Expected: FAIL (`ModuleNotFoundError: spec2md.link_index`)
+- [x] **Step 3: `link_index.py` 구현** (위 Interfaces·규칙대로)
+- [x] **Step 4: 통과 확인** — 같은 명령 → PASS
+- [x] **Step 5: Commit** — `git commit -m "feat(link): 목적지 색인"`
 
 ### Task 3: 참조 찾기·해석 (`link_refs.py`)
 
@@ -237,7 +237,7 @@ def find_refs(text: str, spec: SpecIndex, corpus: CorpusIndex) -> list[Ref]   # 
 
 보호 구간(참조로 보지 않음): front matter, ``` 펜스 블록, `$$…$$`, `$…$`, HTML 태그 자체(`<…>` 안, 속성 값 포함), 캡션 줄(`**Table …`, `*Figure …`), 제목 줄(`#`로 시작). 참조 형태: `Table|Tables|table|tables` / `Figure|Figures` / `clause|clauses|subclause|subclauses|section|sections|Annex` + 번호; 나열 `X and Y`, `X, Y and Z`, `X or Y`(뒤 번호에 단어 생략 허용), 범위 `X to Y`는 양끝만. 규격 지시: 뒤쪽 `of|in` + (`TS nn.nnn` | `TS nn.nnn [n]` | `[n]` | `[n, TS nn.nnn]`), 앞쪽 (`TS nn.nnn [n],?` | `TS nn.nnn,?` | `[n],?` | `[n, TS nn.nnn],?`) 바로 뒤의 참조. `[n]`은 `spec.references`로 규격 번호를 얻는다. 번호 끝의 `.`/`,`는 번호에 넣지 않는다.
 
-- [ ] **Step 1: 실패하는 테스트 작성** (Task 2 fixture 재사용: 38.213 + 38.214(`Table 5.1.2.1-2`, clause `5.1.2`, `9.1.5`) + 36.133 없음)
+- [x] **Step 1: 실패하는 테스트 작성** (Task 2 fixture 재사용: 38.213 + 38.214(`Table 5.1.2.1-2`, clause `5.1.2`, `9.1.5`) + 36.133 없음)
 
 ```python
 def ids(refs): return [(r.kind, r.target_id, r.target_spec_number, r.status) for r in refs]
@@ -264,10 +264,10 @@ def test_annex(c): assert ids(find(c, "see Annex B"))[0][:2] == ("clause", "B")
 ```
 (`find(c, s)`는 `find_refs(s, c.specs["38213-j50"], c)` 도우미.)
 
-- [ ] **Step 2: 실패 확인** — `python -m pytest tests/test_link_refs.py -q` → FAIL
-- [ ] **Step 3: `link_refs.py` 구현**
-- [ ] **Step 4: 통과 확인** → PASS
-- [ ] **Step 5: Commit** — `git commit -m "feat(link): 참조 찾기와 해석"`
+- [x] **Step 2: 실패 확인** — `python -m pytest tests/test_link_refs.py -q` → FAIL
+- [x] **Step 3: `link_refs.py` 구현**
+- [x] **Step 4: 통과 확인** → PASS
+- [x] **Step 5: Commit** — `git commit -m "feat(link): 참조 찾기와 해석"`
 
 ### Task 4: 렌더링 (`link_render.py`)
 
@@ -299,7 +299,7 @@ def render(text: str, refs: list[Ref], spec: SpecIndex, from_file: str,
 - [TS 38.321 5.17](../../38321-j40/clauses/0123_5.17_x.md) — Table 8.1-2
 ```
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 ```python
 def test_markdown_link_and_anchor(...):
@@ -319,10 +319,10 @@ def test_backlinks_section(...):
     assert out.endswith("<!-- spec2md:backlinks -->\n## Referenced by\n\n- [TS 38.321 5.17](../../38321-j40/clauses/0123_5.17_x.md) — Table 8.1-2\n")
 ```
 
-- [ ] **Step 2: 실패 확인** — `python -m pytest tests/test_link_render.py -q` → FAIL
-- [ ] **Step 3: `link_render.py` 구현**
-- [ ] **Step 4: 통과 확인** → PASS
-- [ ] **Step 5: Commit** — `git commit -m "feat(link): 앵커·링크·역참조 렌더링"`
+- [x] **Step 2: 실패 확인** — `python -m pytest tests/test_link_render.py -q` → FAIL
+- [x] **Step 3: `link_render.py` 구현**
+- [x] **Step 4: 통과 확인** → PASS
+- [x] **Step 5: Commit** — `git commit -m "feat(link): 앵커·링크·역참조 렌더링"`
 
 ### Task 5: 전체 실행과 CLI (`link.py`, `cli.py`)
 
@@ -344,7 +344,7 @@ def run_link(raw_root: str, out_root: str, only: set[str] | None = None) -> Link
 
 출력(설계 5.2): `OUT/index.json`(code → `{spec_number, version, release, clauses|tables|figures: {id: {file, anchor}}}`, ambiguous 항목은 `{"ambiguous": true}`), `OUT/{code}/manifest.json`(raw manifest + `"link": {"refs": {status: n}}`), `OUT/{code}/refs.json`(`{"spec", "version", "refs": [{from_file, from_clause, line, text, kind, target_spec, target_id, target_file, anchor, status}]}`; `target_spec`은 규격 번호, 정렬 (from_file, line, start)), `OUT/{code}/clauses/*.md`. 쓰기 전에 `OUT/{code}/`를 지운다(`OUT` 안인지 확인 후). 참조·역참조는 항상 전체 코퍼스로 계산하고, `only`는 어느 규격 폴더를 쓸지만 정한다(다른 규격의 역참조 절은 갱신되지 않음을 stderr에 경고). `media_prefix = posixpath.relpath(raw/{code}/media, OUT/{code}/clauses) + "/"`.
 
-- [ ] **Step 1: 실패하는 테스트 작성** (raw_builder로 두 규격 생성 → `run_link`)
+- [x] **Step 1: 실패하는 테스트 작성** (raw_builder로 두 규격 생성 → `run_link`)
 
 ```python
 def test_end_to_end(tmp_path):
@@ -366,10 +366,10 @@ def test_only(tmp_path):
 def test_cli(tmp_path): assert main(["link", raw, "-o", out]) == 0
 ```
 
-- [ ] **Step 2: 실패 확인** — `python -m pytest tests/test_link.py -q` → FAIL
-- [ ] **Step 3: `link.py`와 CLI 구현**
-- [ ] **Step 4: 통과 확인 + 전체 회귀** — `python -m pytest -q` → 전부 PASS
-- [ ] **Step 5: Commit** — `git commit -m "feat(link): spec2md link 명령"`
+- [x] **Step 2: 실패 확인** — `python -m pytest tests/test_link.py -q` → FAIL
+- [x] **Step 3: `link.py`와 CLI 구현**
+- [x] **Step 4: 통과 확인 + 전체 회귀** — `python -m pytest -q` → 전부 PASS
+- [x] **Step 5: Commit** — `git commit -m "feat(link): spec2md link 명령"`
 
 ### Task 6: 링크 검사기와 spec-linking 스킬, 오케스트레이터 3.5단계
 
@@ -382,13 +382,13 @@ def test_cli(tmp_path): assert main(["link", raw, "-o", out]) == 0
 - 종료 코드: ERROR가 있으면 1, 없으면 0.
 - 검사: (ERROR) 모든 `.md` 링크·`<a href>`의 파일이 존재하고 `#anchor`가 그 파일의 `<a id="…">`로 존재; (ERROR) 사본에서 앵커 줄·링크·역참조 절(`<!-- spec2md:backlinks -->` 이후)·media 접두사를 되돌리면 raw 파일과 바이트 단위로 같음; (ERROR) raw에 있는 본문 파일이 linked에 모두 있음; (WARN) 규격별 status 분포와 `missing_target` 상위 20개 `(target_spec, kind, target_id, 개수)`.
 
-- [ ] **Step 1: 실패하는 테스트 작성** — Task 5 출력을 만든 뒤 (a) 그대로 → 종료 코드 0, (b) 앵커 하나 지움 → 1이고 출력에 `broken anchor`, (c) 사본 본문 한 글자 바꿈 → 1이고 `differs from raw`, (d) 사본 파일 하나 삭제 → 1이고 `missing`.
-- [ ] **Step 2: 실패 확인** — `python -m pytest tests/test_check_links.py -q` → FAIL
-- [ ] **Step 3: `check_links.py` 구현**
-- [ ] **Step 4: 통과 확인** → PASS
-- [ ] **Step 5: `spec-linking/SKILL.md` 작성** — frontmatter `name: spec-linking`, description(언제: "링크 만들어줘", "참조 링크", "linked 다시", 재변환 후 링크 갱신, 해석 실패 개선). 본문: 실행 명령(`python "${CLAUDE_PLUGIN_ROOT}/scripts/spec2md.py" link raw -o linked`), 검사 명령(`python "${CLAUDE_SKILL_DIR}/scripts/check_links.py" linked --raw raw --json _workspace/05_link_check.json`), 출력 규약 7절 링크, 해석 규칙 개선 절차(검사기 WARN 상위 `missing_target`을 원문에서 확인 → 진짜 없는 번호인지, 해석 패턴 누락인지 구분 → 누락이면 `test_link_refs.py`에 실제 문장으로 실패 테스트를 먼저 추가한 뒤 고침), 금지 사항(raw 수정 금지, 추측 링크 금지).
-- [ ] **Step 6: 오케스트레이터 갱신** — 3단계 다음에 "3.5단계: 링크" (메인 직접 실행: link → check_links; ERROR면 converter-developer에 진단 위임) 추가, 0단계 분류표에 "링크만 다시" 행, "위키 만들어줘/질문"은 `spec2md:llm-wiki`로 넘긴다는 행 추가.
-- [ ] **Step 7: Commit** — `git commit -m "feat(link): 링크 검사기와 spec-linking 스킬"`
+- [x] **Step 1: 실패하는 테스트 작성** — Task 5 출력을 만든 뒤 (a) 그대로 → 종료 코드 0, (b) 앵커 하나 지움 → 1이고 출력에 `broken anchor`, (c) 사본 본문 한 글자 바꿈 → 1이고 `differs from raw`, (d) 사본 파일 하나 삭제 → 1이고 `missing`.
+- [x] **Step 2: 실패 확인** — `python -m pytest tests/test_check_links.py -q` → FAIL
+- [x] **Step 3: `check_links.py` 구현**
+- [x] **Step 4: 통과 확인** → PASS
+- [x] **Step 5: `spec-linking/SKILL.md` 작성** — frontmatter `name: spec-linking`, description(언제: "링크 만들어줘", "참조 링크", "linked 다시", 재변환 후 링크 갱신, 해석 실패 개선). 본문: 실행 명령(`python "${CLAUDE_PLUGIN_ROOT}/scripts/spec2md.py" link raw -o linked`), 검사 명령(`python "${CLAUDE_SKILL_DIR}/scripts/check_links.py" linked --raw raw --json _workspace/05_link_check.json`), 출력 규약 7절 링크, 해석 규칙 개선 절차(검사기 WARN 상위 `missing_target`을 원문에서 확인 → 진짜 없는 번호인지, 해석 패턴 누락인지 구분 → 누락이면 `test_link_refs.py`에 실제 문장으로 실패 테스트를 먼저 추가한 뒤 고침), 금지 사항(raw 수정 금지, 추측 링크 금지).
+- [x] **Step 6: 오케스트레이터 갱신** — 3단계 다음에 "3.5단계: 링크" (메인 직접 실행: link → check_links; ERROR면 converter-developer에 진단 위임) 추가, 0단계 분류표에 "링크만 다시" 행, "위키 만들어줘/질문"은 `spec2md:llm-wiki`로 넘긴다는 행 추가.
+- [x] **Step 7: Commit** — `git commit -m "feat(link): 링크 검사기와 spec-linking 스킬"`
 
 ---
 
@@ -405,11 +405,11 @@ def test_cli(tmp_path): assert main(["link", raw, "-o", out]) == 0
 - ERROR: 깨진 상대 링크(파일 없음, 또는 `#anchor`가 대상 파일의 `<a id>`·자동 제목 slug에 없음); front matter 필수 키(`type`, `title`, `sources`, `specs`, `updated`) 누락; `sources`가 빈 배열; `type`이 `feature|concept|spec|answer` 밖; `index.md`에 링크가 없는 페이지; `log.md`에서 `## [`로 시작하지만 `^## \[\d{4}-\d{2}-\d{2}\] (ingest|query|lint) \| .+$`에 맞지 않는 줄.
 - WARN: 다른 위키 페이지에서 들어오는 링크가 없는 고아 페이지(index 링크는 세지 않음); 출처 링크(`linked/`로 가는 링크)가 하나도 없는 본문 문단이 5개 이상인 페이지.
 
-- [ ] **Step 1: 실패하는 테스트 작성** — tmp에 `linked/38321-j40/clauses/a.md`(`<a id="table-7.1-1"></a>`)와 정상 위키(페이지 2개가 서로 링크, index·log 정상)를 만들어 → 0. 그 뒤 각각 한 가지만 깨서 → 1과 메시지 확인: `broken link`(앵커 오타), `missing front matter key: sources`, `not in index`, `bad log entry`. 고아 페이지만 있으면 → 0이고 출력에 `orphan`.
-- [ ] **Step 2: 실패 확인** — `python -m pytest tests/test_lint_wiki.py -q` → FAIL
-- [ ] **Step 3: `lint_wiki.py` 구현**
-- [ ] **Step 4: 통과 확인** → PASS
-- [ ] **Step 5: Commit** — `git commit -m "feat(wiki): lint_wiki 검사 스크립트"`
+- [x] **Step 1: 실패하는 테스트 작성** — tmp에 `linked/38321-j40/clauses/a.md`(`<a id="table-7.1-1"></a>`)와 정상 위키(페이지 2개가 서로 링크, index·log 정상)를 만들어 → 0. 그 뒤 각각 한 가지만 깨서 → 1과 메시지 확인: `broken link`(앵커 오타), `missing front matter key: sources`, `not in index`, `bad log entry`. 고아 페이지만 있으면 → 0이고 출력에 `orphan`.
+- [x] **Step 2: 실패 확인** — `python -m pytest tests/test_lint_wiki.py -q` → FAIL
+- [x] **Step 3: `lint_wiki.py` 구현**
+- [x] **Step 4: 통과 확인** → PASS
+- [x] **Step 5: Commit** — `git commit -m "feat(wiki): lint_wiki 검사 스크립트"`
 
 ### Task 8: llm-wiki 스킬, 스키마 템플릿, wiki-editor 에이전트
 
@@ -420,17 +420,17 @@ def test_cli(tmp_path): assert main(["link", raw, "-o", out]) == 0
 - `llm-wiki` 스킬이 부르는 것: `lint_wiki.py`(Task 7), `linked/{spec}/refs.json`·`index.json`(Task 5), `raw/{spec}/topics/`(기존 topic-grouping).
 - 일괄 ingest 제안 파일 형식 `_workspace/wiki/{spec}_{topic}.json`: `{"spec", "topic", "pages": [{"path": "features/x.md", "action": "create|update", "type", "title", "content_md", "sources": [...]}], "log": "…"}`.
 
-- [ ] **Step 1: `templates/SCHEMA.md`** (영어) — 설계 5.3을 위키 규칙으로 옮긴다: 세 층과 쓰기 권한, 폴더(`features/`, `concepts/`, `specs/`, `answers/`), 페이지 front matter(필수 키·한 줄 스칼라·JSON 배열 `sources`/`specs`/`related`, `specs` 원소는 `"TS 38.321 19.4.0"` 형식), 서술 문장마다 `linked/` 출처 링크, 원문 표·수식은 복사하지 않고 링크, `> CONFLICT:` 블록, 파일 이름 kebab-case, index.md 형식(종류별 `## Features` 등, 줄마다 `- [Title](features/x.md) — one-line summary (specs: 38.321, 38.331; sources: 7)`), log.md 형식(`## [YYYY-MM-DD] ingest | 38.321 beam-failure-recovery`), ingest·query·lint 절차 요약.
-- [ ] **Step 2: `SKILL.md`** — frontmatter `name: llm-wiki`, description(언제: "위키 만들어줘", "위키에 넣어줘(ingest)", "○○ 기능 관련 내용 다 알려줘", "위키 점검(lint)", 위키 기반 질문; 변환·링크 자체는 다른 스킬). 본문:
+- [x] **Step 1: `templates/SCHEMA.md`** (영어) — 설계 5.3을 위키 규칙으로 옮긴다: 세 층과 쓰기 권한, 폴더(`features/`, `concepts/`, `specs/`, `answers/`), 페이지 front matter(필수 키·한 줄 스칼라·JSON 배열 `sources`/`specs`/`related`, `specs` 원소는 `"TS 38.321 19.4.0"` 형식), 서술 문장마다 `linked/` 출처 링크, 원문 표·수식은 복사하지 않고 링크, `> CONFLICT:` 블록, 파일 이름 kebab-case, index.md 형식(종류별 `## Features` 등, 줄마다 `- [Title](features/x.md) — one-line summary (specs: 38.321, 38.331; sources: 7)`), log.md 형식(`## [YYYY-MM-DD] ingest | 38.321 beam-failure-recovery`), ingest·query·lint 절차 요약.
+- [x] **Step 2: `SKILL.md`** — frontmatter `name: llm-wiki`, description(언제: "위키 만들어줘", "위키에 넣어줘(ingest)", "○○ 기능 관련 내용 다 알려줘", "위키 점검(lint)", 위키 기반 질문; 변환·링크 자체는 다른 스킬). 본문:
   - 시작: `wiki/SCHEMA.md`가 없으면 `${CLAUDE_SKILL_DIR}/templates/SCHEMA.md`를 복사하고 빈 `index.md`·`log.md`를 만든다. 있으면 항상 먼저 읽는다. `linked/`가 없으면 spec-linking을 먼저 실행하라고 안내하고 멈춘다.
   - ingest: 설계 5.3 단계 1–4. 관련 내용 찾기 = 주제 조항의 `refs.json` 나가는 참조 + 대상 파일의 `## Referenced by`(들어오는 참조)를 한 단계 따라가 다른 규격 조항을 확인. 기본 대화형(핵심 3–5줄 보고 후 방향 확인), "일괄로"면 묻지 않음.
   - 일괄 ingest: 주제마다 읽기 에이전트(`spec2md:wiki-editor`, 제안 모드)를 병렬로 돌려 제안 JSON만 쓰게 하고, 다 끝나면 `spec2md:wiki-editor` 하나(반영 모드)가 순서대로 반영. 동시 실행 상한 5.
   - query: 설계 5.3 query 1–4. 답은 사용자 언어, 출처 링크 포함, "위키에서" / "linked에서 직접 찾음" 구분, `answers/` 저장은 사용자에게 묻고.
   - lint: `python "${CLAUDE_SKILL_DIR}/scripts/lint_wiki.py" wiki --json _workspace/06_wiki_lint.json` → ERROR 고침 → LLM 점검 항목(모순, 페이지 없는 개념, 빠진 교차 링크, ingest 후보) 보고 → log에 `lint` 항목.
   - 매 작업 끝: index.md·log.md 갱신 후 lint 스크립트 실행, ERROR 0 확인.
-- [ ] **Step 3: `agents/wiki-editor.md`** — 기존 `topic-curator.md` 형식. frontmatter `name: wiki-editor`, description, `tools: Read, Grep, Glob, Bash, Write, Edit`, `model: opus`(종합·서술 품질이 핵심). 역할: llm-wiki 스킬과 `wiki/SCHEMA.md`를 따라 페이지를 쓴다. 두 모드(제안 모드: `_workspace/wiki/…json`만 씀, 위키 파일 수정 금지 / 반영 모드: 제안을 위키에 반영). 원칙: 출처 없는 서술 금지, raw·linked 수정 금지, 원문 표 복사 금지, 끝나면 lint 실행.
-- [ ] **Step 4: 검증** — Run: `claude plugin validate ./plugin` → 오류 없음. Run: `grep -n "CLAUDE_SKILL_DIR\|CLAUDE_PLUGIN_ROOT" plugin/skills/llm-wiki/SKILL.md` → lint·템플릿 경로가 변수로 쓰였는지 확인.
-- [ ] **Step 5: Commit** — `git commit -m "feat(wiki): llm-wiki 스킬, 스키마 템플릿, wiki-editor 에이전트"`
+- [x] **Step 3: `agents/wiki-editor.md`** — 기존 `topic-curator.md` 형식. frontmatter `name: wiki-editor`, description, `tools: Read, Grep, Glob, Bash, Write, Edit`, `model: opus`(종합·서술 품질이 핵심). 역할: llm-wiki 스킬과 `wiki/SCHEMA.md`를 따라 페이지를 쓴다. 두 모드(제안 모드: `_workspace/wiki/…json`만 씀, 위키 파일 수정 금지 / 반영 모드: 제안을 위키에 반영). 원칙: 출처 없는 서술 금지, raw·linked 수정 금지, 원문 표 복사 금지, 끝나면 lint 실행.
+- [x] **Step 4: 검증** — Run: `claude plugin validate ./plugin` → 오류 없음. Run: `grep -n "CLAUDE_SKILL_DIR\|CLAUDE_PLUGIN_ROOT" plugin/skills/llm-wiki/SKILL.md` → lint·템플릿 경로가 변수로 쓰였는지 확인.
+- [x] **Step 5: Commit** — `git commit -m "feat(wiki): llm-wiki 스킬, 스키마 템플릿, wiki-editor 에이전트"`
 
 ---
 
@@ -444,32 +444,32 @@ def test_cli(tmp_path): assert main(["link", raw, "-o", out]) == 0
 - Modify(필요 시): `plugin/src/spec2md/link_refs.py`, `plugin/src/spec2md/link_index.py`, 해당 테스트
 - Create: `_workspace/05_link_report.md`
 
-- [ ] **Step 1: 실행** — Run: `python plugin/scripts/spec2md.py link raw -o linked` → 종료 코드 0, 38개 규격 통계 출력
-- [ ] **Step 2: 검사** — Run: `python plugin/skills/spec-linking/scripts/check_links.py linked --raw raw --json _workspace/05_link_check.json` → Expected: ERROR 0. ERROR가 있으면 superpowers:systematic-debugging으로 원인을 찾고, 실패를 재현하는 테스트를 먼저 추가한 뒤 고친다.
-- [ ] **Step 3: 해석 실패 상위 원인 검토** — WARN의 `missing_target` 상위 20개와 `ambiguous` 전부를 원문에서 확인해 (a) 원문에 실제로 없는 번호, (b) 패턴 누락, (c) 색인 누락(캡션 형식 변형)으로 나눈다. (b)(c)마다 실제 문장을 `test_link_refs.py`/`test_link_index.py`에 실패 테스트로 추가 → 고침 → `python -m pytest -q` PASS → Step 1–2 반복. 상한 3회. resolved 비율이 회차마다 오르지 않으면 멈추고 보고.
-- [ ] **Step 4: 표본 확인** — 무작위 링크 10개(같은 규격 표 4, 규격 간 조항 4, HTML 셀 안 2)를 열어 목적지가 맞는지 사람 눈으로 확인하고 결과를 보고서에 적는다.
-- [ ] **Step 5: 보고서** — `_workspace/05_link_report.md`: 규격별 status 분포, 회차별 resolved 비율, 고친 패턴, 남은 실패 유형과 정상으로 본 이유, 표본 확인 결과.
-- [ ] **Step 6: Commit** — 코드·테스트 변경만 커밋(`linked/`, `_workspace/`는 무시됨): `git commit -m "fix(link): 실데이터 기반 해석 규칙 보완"`
+- [x] **Step 1: 실행** — Run: `python plugin/scripts/spec2md.py link raw -o linked` → 종료 코드 0, 38개 규격 통계 출력
+- [x] **Step 2: 검사** — Run: `python plugin/skills/spec-linking/scripts/check_links.py linked --raw raw --json _workspace/05_link_check.json` → Expected: ERROR 0. ERROR가 있으면 superpowers:systematic-debugging으로 원인을 찾고, 실패를 재현하는 테스트를 먼저 추가한 뒤 고친다.
+- [x] **Step 3: 해석 실패 상위 원인 검토** — WARN의 `missing_target` 상위 20개와 `ambiguous` 전부를 원문에서 확인해 (a) 원문에 실제로 없는 번호, (b) 패턴 누락, (c) 색인 누락(캡션 형식 변형)으로 나눈다. (b)(c)마다 실제 문장을 `test_link_refs.py`/`test_link_index.py`에 실패 테스트로 추가 → 고침 → `python -m pytest -q` PASS → Step 1–2 반복. 상한 3회. resolved 비율이 회차마다 오르지 않으면 멈추고 보고.
+- [x] **Step 4: 표본 확인** — 무작위 링크 10개(같은 규격 표 4, 규격 간 조항 4, HTML 셀 안 2)를 열어 목적지가 맞는지 사람 눈으로 확인하고 결과를 보고서에 적는다.
+- [x] **Step 5: 보고서** — `_workspace/05_link_report.md`: 규격별 status 분포, 회차별 resolved 비율, 고친 패턴, 남은 실패 유형과 정상으로 본 이유, 표본 확인 결과.
+- [x] **Step 6: Commit** — 코드·테스트 변경만 커밋(`linked/`, `_workspace/`는 무시됨): `git commit -m "fix(link): 실데이터 기반 해석 규칙 보완"`
 
 ### Task 10: 38.213 · 38.321 · 38.331 주제 묶음
 
-- [ ] **Step 1:** 세 규격에 한 메시지에서 병렬로 `Agent(subagent_type: "spec2md:topic-curator", prompt: "topic-grouping 스킬로 raw/{code}/topics/topics.json을 작성하고 check_topics.py로 확인하라")` (code = `38213-j50`, `38321-j40`, `38331-j40`)
-- [ ] **Step 2:** 각각 Run: `python "plugin/skills/topic-grouping/scripts/check_topics.py" raw/{code}` → 종료 코드 0
-- [ ] **Step 3:** 각각 Run: `python plugin/scripts/spec2md.py topics raw/{code}` → `wrote N topic files`
-- [ ] **Step 4:** beam failure recovery 관련 주제 id를 세 규격에서 찾아 목록으로 적는다(예상: 38.213 link recovery 절차, 38.321 BFD/BFR, 38.331 BFR 설정 IE). 해당 주제가 없으면 topic-curator에 그 주제만 고치게 다시 지시한다.
+- [x] **Step 1:** 세 규격에 한 메시지에서 병렬로 `Agent(subagent_type: "spec2md:topic-curator", prompt: "topic-grouping 스킬로 raw/{code}/topics/topics.json을 작성하고 check_topics.py로 확인하라")` (code = `38213-j50`, `38321-j40`, `38331-j40`)
+- [x] **Step 2:** 각각 Run: `python "plugin/skills/topic-grouping/scripts/check_topics.py" raw/{code}` → 종료 코드 0
+- [x] **Step 3:** 각각 Run: `python plugin/scripts/spec2md.py topics raw/{code}` → `wrote N topic files`
+- [x] **Step 4:** beam failure recovery 관련 주제 id를 세 규격에서 찾아 목록으로 적는다(예상: 38.213 link recovery 절차, 38.321 BFD/BFR, 38.331 BFR 설정 IE). 해당 주제가 없으면 topic-curator에 그 주제만 고치게 다시 지시한다.
 
 ### Task 11: 위키 초기화와 BFR ingest
 
-- [ ] **Step 1:** `spec2md:llm-wiki` 스킬로 위키를 초기화한다 → `wiki/SCHEMA.md`, `wiki/index.md`, `wiki/log.md` 생성 확인.
-- [ ] **Step 2:** Task 10 Step 4의 주제를 대화형 ingest로 하나씩 넣는다. 주제마다 핵심 3–5줄을 사용자에게 보고하고 방향을 받는다.
-- [ ] **Step 3:** Run: `python plugin/skills/llm-wiki/scripts/lint_wiki.py wiki` → Expected: ERROR 0. 최소 `features/beam-failure-recovery.md` 1개와 관련 concept 페이지가 있고, 그 `sources`에 세 규격이 모두 들어 있다.
-- [ ] **Step 4:** 위키를 git으로 추적할지 사용자에게 묻고(설계: 사용자 선택), 답에 따라 `.gitignore`에 `/wiki/`를 넣거나 커밋한다.
+- [x] **Step 1:** `spec2md:llm-wiki` 스킬로 위키를 초기화한다 → `wiki/SCHEMA.md`, `wiki/index.md`, `wiki/log.md` 생성 확인.
+- [x] **Step 2:** Task 10 Step 4의 주제를 대화형 ingest로 하나씩 넣는다. 주제마다 핵심 3–5줄을 사용자에게 보고하고 방향을 받는다.
+- [x] **Step 3:** Run: `python plugin/skills/llm-wiki/scripts/lint_wiki.py wiki` → Expected: ERROR 0. 최소 `features/beam-failure-recovery.md` 1개와 관련 concept 페이지가 있고, 그 `sources`에 세 규격이 모두 들어 있다.
+- [x] **Step 4:** 위키를 git으로 추적할지 사용자에게 묻고(설계: 사용자 선택), 답에 따라 `.gitignore`에 `/wiki/`를 넣거나 커밋한다.
 
 ### Task 12: query 수용 검사와 마무리
 
-- [ ] **Step 1:** 새 대화 맥락(서브에이전트)에서 `spec2md:llm-wiki` 스킬로 "beam failure recovery 관련 내용 다 알려줘"를 질의한다. 합격 기준: 답이 위키 페이지에서 출발하고, 38.213·38.321·38.331의 조항·표를 출처 링크로 짚으며, 한국어로 답한다.
-- [ ] **Step 2:** 답에 나온 링크를 전부 추출해 파일·앵커 존재를 확인한다(lint_wiki의 링크 검사 함수를 재사용하거나 같은 규칙으로). 깨진 링크 0.
-- [ ] **Step 3:** 답을 `answers/`에 저장할지 사용자에게 묻고, 저장하면 index·log 갱신 후 lint ERROR 0 확인.
-- [ ] **Step 4:** `CLAUDE.md` 변경 이력에 `2026-11-26 | link 명령·spec-linking·llm-wiki 스킬·wiki-editor 에이전트 추가 | plugin/ | 참조 링크·위키 단계` 행 추가, 플러그인 `version`은 `0.2.0` 유지.
-- [ ] **Step 5:** 전체 회귀 — Run: `cd plugin && python -m pytest -q` → 전부 PASS. Run: `claude plugin validate ./plugin` → 오류 없음.
-- [ ] **Step 6: Commit** — `git commit -m "docs: 플러그인·링크·위키 변경 이력"`
+- [x] **Step 1:** 새 대화 맥락(서브에이전트)에서 `spec2md:llm-wiki` 스킬로 "beam failure recovery 관련 내용 다 알려줘"를 질의한다. 합격 기준: 답이 위키 페이지에서 출발하고, 38.213·38.321·38.331의 조항·표를 출처 링크로 짚으며, 한국어로 답한다.
+- [x] **Step 2:** 답에 나온 링크를 전부 추출해 파일·앵커 존재를 확인한다(lint_wiki의 링크 검사 함수를 재사용하거나 같은 규칙으로). 깨진 링크 0.
+- [x] **Step 3:** 답을 `answers/`에 저장할지 사용자에게 묻고, 저장하면 index·log 갱신 후 lint ERROR 0 확인.
+- [x] **Step 4:** `CLAUDE.md` 변경 이력에 `2026-11-26 | link 명령·spec-linking·llm-wiki 스킬·wiki-editor 에이전트 추가 | plugin/ | 참조 링크·위키 단계` 행 추가, 플러그인 `version`은 `0.2.0` 유지.
+- [x] **Step 5:** 전체 회귀 — Run: `cd plugin && python -m pytest -q` → 전부 PASS. Run: `claude plugin validate ./plugin` → 오류 없음.
+- [x] **Step 6: Commit** — `git commit -m "docs: 플러그인·링크·위키 변경 이력"`

@@ -8,12 +8,14 @@
 
 ## 개발 환경
 
-이 저장소는 로컬 마켓플레이스 루트이고, `plugin/`이 플러그인이다. 로컬 마켓플레이스 플러그인은 복사되지 않고 제자리에서 로드되므로 `plugin/` 수정은 `/reload-plugins` 후 바로 반영된다. 설치:
+이 저장소는 마켓플레이스(`spec2md`) 루트이고, `plugin/`이 플러그인이다. 로컬 마켓플레이스 플러그인은 복사되지 않고 제자리에서 로드되므로 `plugin/` 수정은 `/reload-plugins` 후 바로 반영된다. 개발용 설치:
 
 ```
 claude plugin marketplace add ./
-claude plugin install spec2md@spec2md-local --scope project
+claude plugin install spec2md@spec2md --scope project
 ```
+
+사용자는 clone 없이 `claude plugin marketplace add CW-Nam/spec2md`로 설치한다(README 참고). 원격 설치본은 캐시 복사본이라 `plugin/.claude-plugin/plugin.json`의 `version`을 올려야 업데이트가 내려간다. `plugin/hooks/check_deps.py`가 세션 시작 때 Python 버전과 런타임 의존성(lxml, olefile)을 확인한다.
 
 **의존성:** Python ≥3.11, `pip install -r plugin/requirements.txt` (lxml, python-docx, olefile, pytest)
 
@@ -37,3 +39,4 @@ python plugin/scripts/spec2md.py topics raw/{spec}/    # topics/topics.json → 
 | 2026-11-25 | 분할 규격(`_cover`, `_s00-07` …) 병합 규칙, 제목 해석 규칙(문자 접미 번호·번호 깊이 level·H6·오타 보정), 본문 규칙 보완(TH/TF, 파이프 표 조건, 첨자, OLE 수식 LaTeX 복원) | output-contract.md, inspect_docx.py, check_output.py, check_all.py | 첫 일괄 변환(38개 규격) 형식 분석·검사 결과 |
 | 2026-11-26 | 플러그인 구조로 이동(plugin/), 경로 변수화 | 전체 | 배포·위키 확장 |
 | 2026-11-26 | link 명령·spec-linking·llm-wiki 스킬·wiki-editor 에이전트 추가 | plugin/ | 참조 링크·위키 단계 |
+| 2026-11-26 | 마켓플레이스 이름 spec2md-local → spec2md, SessionStart 의존성 확인 훅, 원격 설치 안내, v0.3.0 | marketplace.json, plugin/hooks/, README.md | clone 없이 GitHub에서 설치 |

@@ -1,1 +1,1 @@
-{"name": "spec2md", "version": "0.2.0", "description": "3GPP spec .docx -> clause Markdown raw, cross-reference links, and an LLM wiki", "author": {"name": "jefre"}}
+{"name": "spec2md", "version": "0.3.0", "description": "3GPP spec .docx -> clause Markdown raw, cross-reference links, and an LLM wiki", "author": {"name": "jefre"}}

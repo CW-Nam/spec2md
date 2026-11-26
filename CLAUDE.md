@@ -15,6 +15,21 @@ claude plugin marketplace add ./
 claude plugin install spec2md@spec2md-local --scope project
 ```
 
+**의존성:** Python ≥3.11, `pip install -r plugin/requirements.txt` (lxml, python-docx, olefile, pytest)
+
+**명령:**
+```
+cd plugin && python -m pytest -q                       # 테스트 (pytest 설정이 plugin/pyproject.toml에 있음)
+python plugin/scripts/spec2md.py batch specs/ -o raw/  # 일괄 변환 (--only, --depth CODE=N, --split-depth)
+python plugin/scripts/spec2md.py convert specs/X.docx -o raw/   # 분할 규격은 파트 파일을 모두 넘김
+python plugin/scripts/spec2md.py link raw -o linked    # 참조 링크 사본
+python plugin/scripts/spec2md.py topics raw/{spec}/    # topics/topics.json → 주제 파일
+```
+검사 스크립트는 각 스킬의 `scripts/`에 있다 (check_output.py, check_all.py, check_links.py, check_topics.py, lint_wiki.py).
+
+**데이터 흐름:** `specs/`(원본 docx) → `raw/`(조항 md) → `linked/`(링크 사본) → `wiki/`. 모두 gitignore 대상이다. `raw/`와 `linked/`는 생성물이라 직접 고치지 않고 재생성한다. 위키는 `linked/`만 인용한다. `_workspace/`는 에이전트 작업 파일이고 `01_analyst_*.md`만 추적한다.
+출력 형식의 기준은 `plugin/skills/spec-md-conversion/references/output-contract.md`다.
+
 **변경 이력:**
 | 날짜 | 변경 내용 | 대상 | 사유 |
 | --- | --- | --- | --- |

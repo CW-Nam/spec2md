@@ -5,7 +5,7 @@ description: "spec2md로 조항별로 나눈 3GPP 규격 출력(raw/{spec}/manif
 
 # 조항을 주제로 묶기
 
-조항 번호 순서는 규격 편집 구조다. 위키 항목은 개념 단위가 더 유용하다. 예를 들어 RRC 재구성 절차(5.3.5), 메시지 정의(6.2.2), 관련 IE(6.3.x)는 서로 떨어져 있지만 한 주제다. 이 스킬은 그 매핑만 만든다. 조항 원문은 고치거나 요약하지 않는다. 주제 파일은 `python "${CLAUDE_PLUGIN_ROOT}/scripts/spec2md.py" topics raw/{spec}/` 명령이 `topics.json`을 읽어 기계적으로 만든다.
+조항 번호 순서는 규격 편집 구조다. 위키 항목은 개념 단위가 더 유용하다. 예를 들어 RRC 재구성 절차(5.3.5), 메시지 정의(6.2.2), 관련 IE(6.3.x)는 서로 떨어져 있지만 한 주제다. 이 스킬은 그 매핑만 만든다. 조항 원문은 고치거나 요약하지 않는다. 주제 파일은 `uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md topics raw/{spec}/` 명령이 `topics.json`을 읽어 기계적으로 만든다.
 
 ## 입력
 
@@ -30,7 +30,7 @@ description: "spec2md로 조항별로 나눈 3GPP 규격 출력(raw/{spec}/manif
 작성한 뒤 다음 명령으로 확인한다.
 
 ```
-python "${CLAUDE_SKILL_DIR}/scripts/check_topics.py" raw/{spec}
+uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_SKILL_DIR}/scripts/check_topics.py" raw/{spec}
 ```
 
 종료 코드가 0이어야 한다. 0이 아니면 다음 중 하나가 남아 있다는 뜻이다. 배정되지 않은 조항, manifest에 없는 조항 번호, 잘못된 형식이나 중복된 id. 스크립트가 표시하는 `large`/`tiny` 주제는 원칙 4에 따라 검토한다.

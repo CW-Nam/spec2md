@@ -11,8 +11,8 @@ description: "3GPP 규격(TS/TR) .docx 원본의 구조를 조사한다. 스타�
 
 1. 구조 요약을 뽑는다. 표준 라이브러리만 쓰므로 설치할 것이 없다.
    ```
-   python "${CLAUDE_SKILL_DIR}/scripts/inspect_docx.py" specs/38331-i10.docx --samples 3
-   python "${CLAUDE_SKILL_DIR}/scripts/inspect_docx.py" specs/38331-i10.docx --json _workspace/01_inspect_38331-i10.json
+   uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_SKILL_DIR}/scripts/inspect_docx.py" specs/38331-i10.docx --samples 3
+   uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_SKILL_DIR}/scripts/inspect_docx.py" specs/38331-i10.docx --json _workspace/01_inspect_38331-i10.json
    ```
    JSON 보고서는 `conversion-check` 스킬의 검사 스크립트가 입력으로 쓴다. 반드시 남긴다.
 2. 스타일 빈도표에서 아래 표에 없는 스타일을 찾는다. 빈도가 높은 미지 스타일은 `--samples`로 예시 텍스트를 보고 역할을 판단한다.

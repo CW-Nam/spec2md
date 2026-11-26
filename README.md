@@ -44,7 +44,14 @@ Claude Code 안에서는 `/plugin marketplace add CW-Nam/spec2md`, `/plugin inst
 }
 ```
 
-**Python 의존성은 따로 설치한다.** Python 3.11 이상과 `lxml`, `olefile`이 필요하다. 플러그인에는 세션 시작 때 이를 확인하는 훅이 있어서, 빠진 것이 있으면 설치 명령(플러그인 캐시 안의 `requirements.txt` 경로 포함)을 알려 준다. 그 명령을 그대로 실행하면 된다.
+**[uv](https://docs.astral.sh/uv/)가 필요하다.** 스킬은 `uv run --project "${CLAUDE_PLUGIN_ROOT}" ...`로 스크립트를 실행하고, uv가 플러그인의 `pyproject.toml`·`uv.lock`에 맞춰 Python(3.11 이상)과 의존성(`lxml`, `olefile` 등)을 플러그인 폴더의 `.venv`에 처음 한 번 설치한다. 따로 `pip install`할 필요는 없다. uv가 없으면 세션 시작 훅이 설치 방법을 알려 준다.
+
+```
+winget install --id=astral-sh.uv -e                  # Windows
+curl -LsSf https://astral.sh/uv/install.sh | sh      # macOS/Linux
+```
+
+uv를 쓸 수 없으면 `pip install -r <플러그인 폴더>/requirements.txt` 후 `python <플러그인 폴더>/scripts/spec2md.py ...`로 직접 실행할 수 있다(스킬 명령은 uv 기준이다).
 
 **업데이트:** `claude plugin marketplace update spec2md` 후 `/plugin`에서 업데이트한다. 원격 설치본은 `~/.claude/plugins/cache/` 아래 복사본이라, 저장소에서 `plugin/.claude-plugin/plugin.json`의 `version`을 올려야 새 내용이 내려간다.
 
@@ -55,7 +62,7 @@ Claude Code 안에서는 `/plugin marketplace add CW-Nam/spec2md`, `/plugin inst
 ```
 git clone https://github.com/CW-Nam/spec2md.git
 cd spec2md
-pip install -r plugin/requirements.txt
+uv sync --project plugin       # plugin/.venv에 의존성 설치 (dev 그룹 포함)
 claude plugin marketplace add ./
 claude plugin install spec2md@spec2md --scope project
 ```
@@ -77,12 +84,14 @@ claude plugin install spec2md@spec2md --scope project
 ### CLI 직접 실행
 
 ```
-python plugin/scripts/spec2md.py batch specs/ -o raw/                 # 일괄 변환
-python plugin/scripts/spec2md.py batch specs/ -o raw/ --only 38331-j40 --depth 38331-j40=4
-python plugin/scripts/spec2md.py convert specs/24007-j50.docx -o raw/  # 한 규격
-python plugin/scripts/spec2md.py link raw -o linked                   # 참조 링크 사본
-python plugin/scripts/spec2md.py topics raw/38213-j50/                # topics/topics.json → 주제 파일
+uv run --project plugin spec2md batch specs/ -o raw/                 # 일괄 변환
+uv run --project plugin spec2md batch specs/ -o raw/ --only 38331-j40 --depth 38331-j40=4
+uv run --project plugin spec2md convert specs/24007-j50.docx -o raw/  # 한 규격
+uv run --project plugin spec2md link raw -o linked                   # 참조 링크 사본
+uv run --project plugin spec2md topics raw/38213-j50/                # topics/topics.json → 주제 파일
 ```
+
+`--project`는 작업 폴더를 바꾸지 않으므로 상대 경로는 현재 폴더 기준이다. 검사 스크립트는 `uv run --project plugin python plugin/skills/.../scripts/X.py ...`로 실행한다.
 
 - `--split-depth N`(기본 3): 조항 파일로 나눌 제목 깊이. `--max-chars`(기본 60000): 파일 하나의 최대 크기.
 - 분할 배포된 규격(`36101-j60_cover.docx`, `36101-j60_s00-07.docx` …)은 `batch`가 같은 코드끼리 묶어 `raw/36101-j60/` 하나로 만든다. `convert`로 할 때는 파트 파일을 모두 넘긴다.
@@ -105,8 +114,9 @@ python plugin/scripts/spec2md.py topics raw/38213-j50/                # topics/t
 .claude-plugin/marketplace.json   마켓플레이스 정의 (이름 spec2md)
 plugin/
 ├── src/spec2md/                  변환 도구 (reader, headings, blocks, omml/mtef 수식, split, link*, topics, cli)
-├── scripts/spec2md.py            설치 없이 실행하는 진입점
-├── hooks/                        SessionStart 의존성 확인 훅 (check_deps.py)
+├── pyproject.toml, uv.lock       의존성 정의·고정 (uv). requirements.txt는 pip 대안용
+├── scripts/spec2md.py            패키지 설치 없이 실행하는 진입점 (pip 대안)
+├── hooks/                        SessionStart uv 설치 확인 훅 (check_deps.py)
 ├── tests/                        pytest
 ├── skills/                       스킬 7개 (오케스트레이터, docx 구조 분석, 변환, 검사, 링크, 주제 묶음, 위키)
 └── agents/                       에이전트 5개 (형식 분석, 변환 개발, 검사, 주제 큐레이션, 위키 편집)
@@ -117,7 +127,9 @@ docs/                             설계·계획 문서
 ## 테스트
 
 ```
-cd plugin && python -m pytest -q
+uv run --project plugin pytest -q plugin
 ```
+
+의존성을 바꿀 때는 `plugin/`에서 `uv add 패키지==버전`(테스트 전용은 `uv add --dev`)을 쓰고 `uv.lock`을 함께 커밋한다. `requirements.txt`도 같은 버전으로 맞춘다. 원격 설치본에도 `uv.lock`이 함께 내려가므로 사용자 환경에도 같은 버전이 설치된다.
 
 테스트는 `tests/docx_builder.py`로 작은 docx를 직접 만들어 변환 결과를 확인한다. `python-docx`는 만든 docx가 올바른 문서인지 확인하는 데만 쓴다.

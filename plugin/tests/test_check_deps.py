@@ -1,4 +1,4 @@
-"""hooks/check_deps.py(SessionStart 의존성 확인 훅) 테스트: CLI를 서브프로세스로 실행."""
+"""hooks/check_deps.py(SessionStart uv 확인 훅) 테스트: CLI를 서브프로세스로 실행."""
 import json
 import os
 import subprocess
@@ -14,18 +14,19 @@ def run(env_extra):
                           encoding="utf-8", env=env, timeout=60)
 
 
-def test_silent_when_all_present():
-    r = run({"SPEC2MD_REQUIRED_MODULES": "json,os"})
+def test_silent_when_uv_present():
+    # 테스트를 실행하는 Python은 PATH에 반드시 있는 실행 파일이다.
+    r = run({"SPEC2MD_UV_EXE": sys.executable})
     assert r.returncode == 0
     assert r.stdout.strip() == ""
 
 
-def test_reports_missing_module():
-    r = run({"SPEC2MD_REQUIRED_MODULES": "json,no_such_module_xyz", "CLAUDE_PLUGIN_ROOT": ROOT})
+def test_reports_missing_uv():
+    r = run({"SPEC2MD_UV_EXE": "no_such_uv_xyz", "CLAUDE_PLUGIN_ROOT": ROOT})
     assert r.returncode == 0
     out = json.loads(r.stdout)
-    assert "no_such_module_xyz" in out["systemMessage"]
+    assert "uv is not installed" in out["systemMessage"]
     assert "requirements.txt" in out["systemMessage"]
     ctx = out["hookSpecificOutput"]
     assert ctx["hookEventName"] == "SessionStart"
-    assert "no_such_module_xyz" in ctx["additionalContext"]
+    assert "uv is not installed" in ctx["additionalContext"]

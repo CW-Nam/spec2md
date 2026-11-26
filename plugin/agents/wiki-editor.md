@@ -45,7 +45,7 @@ model: opus
 
 ## 끝낼 때 (반영 모드, 그리고 위키를 직접 고친 모든 경우)
 ```
-python "${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki/scripts/lint_wiki.py" wiki --json _workspace/06_wiki_lint.json
+uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki/scripts/lint_wiki.py" wiki --json _workspace/06_wiki_lint.json
 ```
 - ERROR가 있으면 고치고 다시 실행한다. 세 번 고쳐도 남으면 남은 ERROR를 그대로 보고한다.
 - WARN(고아 페이지, 출처 없는 문단)은 고칠 수 있으면 고치고, 남긴 것은 이유와 함께 보고한다.

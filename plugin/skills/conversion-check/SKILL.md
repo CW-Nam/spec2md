@@ -11,11 +11,11 @@ description: "spec2md가 만든 Markdown raw 출력(raw/{spec}/)이 원본 docx�
 
 1. 원본 구조 보고서가 없으면 만든다.
    ```
-   python "${CLAUDE_PLUGIN_ROOT}/skills/3gpp-docx-structure/scripts/inspect_docx.py" specs/{file}.docx --json _workspace/01_inspect_{spec}.json
+   uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_PLUGIN_ROOT}/skills/3gpp-docx-structure/scripts/inspect_docx.py" specs/{file}.docx --json _workspace/01_inspect_{spec}.json
    ```
 2. 검사 스크립트를 실행한다.
    ```
-   python "${CLAUDE_SKILL_DIR}/scripts/check_output.py" --inspect _workspace/01_inspect_{spec}.json --out raw/{spec} --json _workspace/{phase}_checker_{spec}.json
+   uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_SKILL_DIR}/scripts/check_output.py" --inspect _workspace/01_inspect_{spec}.json --out raw/{spec} --json _workspace/{phase}_checker_{spec}.json
    ```
    종료 코드 0은 오류 없음(경고는 있을 수 있음), 1은 오류 있음, 2는 입력 파일 문제다.
 3. 스크립트가 잡지 못하는 부분은 표본으로 직접 본다. 원본에서 표·ASN.1·그림·부속서가 많은 조항을 3~5개 고르고, 원본 텍스트(`inspect_docx.py --samples`나 XML 직접 조회)와 출력 파일을 나란히 비교한다. 다음을 확인한다.

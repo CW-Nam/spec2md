@@ -10,8 +10,8 @@ description: "변환된 3GPP raw Markdown(raw/{spec}/)에서 표·그림·조항
 ## 실행
 
 ```
-python "${CLAUDE_PLUGIN_ROOT}/scripts/spec2md.py" link raw -o linked
-python "${CLAUDE_PLUGIN_ROOT}/scripts/spec2md.py" link raw -o linked --only 38213-j50   # 일부만
+uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md link raw -o linked
+uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md link raw -o linked --only 38213-j50   # 일부만
 ```
 
 - 같은 입력이면 결과가 같다(결정적). `linked/{spec}/`는 실행할 때마다 지우고 새로 쓴다.
@@ -21,7 +21,7 @@ python "${CLAUDE_PLUGIN_ROOT}/scripts/spec2md.py" link raw -o linked --only 3821
 ## 검사
 
 ```
-python "${CLAUDE_SKILL_DIR}/scripts/check_links.py" linked --raw raw --json _workspace/05_link_check.json
+uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_SKILL_DIR}/scripts/check_links.py" linked --raw raw --json _workspace/05_link_check.json
 ```
 
 `check_links.py`는 링크 도구와 코드를 공유하지 않는 독립 검사기다(표준 라이브러리만 사용). 종료 코드 0이어야 한다.
@@ -45,7 +45,7 @@ WARN은 실패가 아니라 해석하지 못한 참조의 목록이다. 줄이�
    - **진짜 없는 번호**: 원문의 오타이거나 다른 Release에만 있는 조항이다. 그대로 둔다.
    - **해석 패턴 누락**: 번호는 있는데 도구가 찾지 못했다(예: 새로운 나열 형태, 제목 번호 모양, 규격 지시 형태).
 3. 패턴 누락이면 `${CLAUDE_PLUGIN_ROOT}/tests/test_link_refs.py`에 **실제 문장**으로 실패하는 테스트를 먼저 추가한다. 그 다음 `link_refs.py`나 `link_index.py`를 고쳐 통과시킨다.
-4. 전체 테스트(`python -m pytest -q "${CLAUDE_PLUGIN_ROOT}/tests"`)와 `link` → `check_links.py`를 다시 실행해 ERROR가 0이고 WARN이 줄었는지 확인한다.
+4. 전체 테스트(`uv run --project "${CLAUDE_PLUGIN_ROOT}" pytest -q "${CLAUDE_PLUGIN_ROOT}/tests"`)와 `link` → `check_links.py`를 다시 실행해 ERROR가 0이고 WARN이 줄었는지 확인한다.
 
 ## 금지
 

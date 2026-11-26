@@ -22,7 +22,7 @@ description: "링크된 3GPP 규격 사본(linked/)을 근거로 영어 LLM 위�
 
 단위는 한 규격의 주제 하나(`raw/{spec}/topics/{id}.md`)다.
 
-1. **주제 확인.** `raw/{spec}/topics/topics.json`이 없으면 `spec2md:topic-grouping` 스킬로 주제를 묶고 `python "${CLAUDE_PLUGIN_ROOT}/scripts/spec2md.py" topics raw/{spec}/`로 주제 파일을 만든다.
+1. **주제 확인.** `raw/{spec}/topics/topics.json`이 없으면 `spec2md:topic-grouping` 스킬로 주제를 묶고 `uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md topics raw/{spec}/`로 주제 파일을 만든다.
 2. **주제와 관련 내용 읽기.**
    - 주제 파일을 읽는다. 조항마다 앞에 있는 `<!-- source: clauses/{file}.md -->` 주석이 출처다. 인용할 사본은 `linked/{spec}/clauses/{file}.md`다.
    - **나가는 참조:** `linked/{spec}/refs.json`에서 `from_file`이 주제 조항(`clauses/{file}.md`)이고 `status`가 `resolved`인 행을 모은다. `target_spec`·`target_file`·`anchor`가 가리키는 조항, 특히 다른 규격의 조항을 확인한다(경로는 `linked/{target 규격 코드}/{target_file}`, 규격 코드는 `linked/index.json`에서 번호로 찾는다).
@@ -74,7 +74,7 @@ description: "링크된 3GPP 규격 사본(linked/)을 근거로 영어 LLM 위�
 ## lint — 위키 점검
 
 ```
-python "${CLAUDE_SKILL_DIR}/scripts/lint_wiki.py" wiki --json _workspace/06_wiki_lint.json
+uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_SKILL_DIR}/scripts/lint_wiki.py" wiki --json _workspace/06_wiki_lint.json
 ```
 
 `lint_wiki.py`는 표준 라이브러리만 쓰는 결정적 검사기다. 종료 코드 0 = ERROR 없음, 1 = ERROR 있음, 2 = 입력 오류.

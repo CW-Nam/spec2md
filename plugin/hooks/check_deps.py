@@ -1,43 +1,37 @@
-"""SessionStart 훅: spec2md 실행에 필요한 Python 버전과 모듈이 있는지 확인한다.
+"""SessionStart 훅: spec2md 실행에 필요한 uv가 있는지 확인한다.
 
-모두 있으면 아무것도 출력하지 않는다. 빠진 것이 있으면 사용자에게 보일 systemMessage와
-Claude에게 줄 additionalContext로 설치 명령을 알린다. 세션을 막지 않도록 항상 0으로 끝난다.
+스킬·에이전트는 `uv run --project "${CLAUDE_PLUGIN_ROOT}" ...`로 스크립트를 실행한다. uv가
+pyproject.toml·uv.lock에 따라 Python과 의존성(lxml, olefile …)을 플러그인 .venv에 맞춰 주므로
+여기서는 uv만 확인한다. 있으면 아무것도 출력하지 않는다. 없으면 사용자에게 보일 systemMessage와
+Claude에게 줄 additionalContext로 설치 방법을 알린다. 세션을 막지 않도록 항상 0으로 끝난다.
 """
-import importlib.util
 import json
 import os
+import shutil
 import sys
 
-MIN_PYTHON = (3, 11)
-# 변환·링크 실행에 필요한 런타임 의존성 (pyproject.toml의 dependencies). python-docx, pytest는 테스트용.
-DEFAULT_MODULES = "lxml,olefile"
+# 테스트에서 없는 실행 파일 이름으로 바꿔 '없음' 경로를 확인한다.
+UV = os.environ.get("SPEC2MD_UV_EXE", "uv")
 
-
-def missing_modules(names):
-    return [n for n in names if importlib.util.find_spec(n) is None]
+INSTALL_HINT = (
+    'Windows: winget install --id=astral-sh.uv -e  (or: powershell -c "irm https://astral.sh/uv/install.ps1 | iex"); '
+    "macOS/Linux: curl -LsSf https://astral.sh/uv/install.sh | sh; "
+    "or: pip install uv"
+)
 
 
 def main():
-    names = [n.strip() for n in os.environ.get("SPEC2MD_REQUIRED_MODULES", DEFAULT_MODULES).split(",")
-             if n.strip()]
-    problems = []
-    if sys.version_info < MIN_PYTHON:
-        problems.append(f"Python {sys.version.split()[0]} (needs >= {MIN_PYTHON[0]}.{MIN_PYTHON[1]})")
-    missing = missing_modules(names)
-    if missing:
-        problems.append("missing modules: " + ", ".join(missing))
-    if not problems:
+    if shutil.which(UV):
         return
-
     root = os.environ.get("CLAUDE_PLUGIN_ROOT") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    req = os.path.join(root, "requirements.txt")
-    cmd = f'"{sys.executable}" -m pip install -r "{req}"'
-    msg = f"spec2md: {'; '.join(problems)}. Install with: {cmd}"
+    msg = (f"spec2md: uv is not installed (needed to run spec2md scripts). Install it - {INSTALL_HINT}. "
+           f'Fallback without uv: pip install -r "{os.path.join(root, "requirements.txt")}" '
+           "and run the scripts with python instead of uv run.")
     print(json.dumps({
         "systemMessage": msg,
         "hookSpecificOutput": {
             "hookEventName": "SessionStart",
-            "additionalContext": msg + " - spec2md scripts will fail until this is installed; "
+            "additionalContext": msg + " - spec2md scripts will fail until this is resolved; "
                                        "tell the user before running them.",
         },
     }))  # ensure_ascii 기본값: 경로에 비ASCII가 있어도 cp949 콘솔에서 깨지지 않는다

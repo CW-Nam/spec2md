@@ -1,4 +1,8 @@
-"""Run spec2md from the plugin tree: python spec2md.py <cmd> ..."""
+"""Run spec2md from the plugin tree without installing it (pip fallback).
+
+Preferred: uv run --project <plugin> spec2md <cmd> ...  (uv installs dependencies itself)
+Fallback:  python spec2md.py <cmd> ...                 (after pip install -r requirements.txt)
+"""
 import os
 import sys
 
@@ -9,7 +13,8 @@ try:
     import lxml  # noqa: F401
 except ImportError:
     req = os.path.join(PLUGIN_ROOT, "requirements.txt")
-    sys.stderr.write(f'lxml is required. Install it with: pip install -r "{req}"\n')
+    sys.stderr.write(f'lxml is required. Run with uv instead: uv run --project "{PLUGIN_ROOT}" spec2md ...\n'
+                     f'  or install it: pip install -r "{req}"\n')
     raise SystemExit(3)
 
 from spec2md.cli import main  # noqa: E402

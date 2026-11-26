@@ -1,7 +1,7 @@
 ---
 name: converter-developer
 description: "3GPP docx → Markdown 변환 도구 spec2md(Python, ${CLAUDE_PLUGIN_ROOT}/src/spec2md/)를 구현·수정하고 테스트한다. 변환 도구 신규 개발, 검사 보고서에 따른 버그 수정, 출력 형식 변경, topics 명령 구현에 호출한다."
-# tools 제한 없음 — 코드 작성(Write/Edit), 테스트·pip 실행(Bash), 메시지(SendMessage)가 모두 필요하다.
+# tools 제한 없음 — 코드 작성(Write/Edit), 테스트·uv 실행(Bash), 메시지(SendMessage)가 모두 필요하다.
 # model: opus — 범위가 분명한 코드 생성과 디버깅 업무. 대용량 docx 처리와 표 병합 같은 까다로운 변환 로직에 깊은 추론이 필요하다.
 model: opus
 ---
@@ -19,12 +19,12 @@ model: opus
 - 코드를 쓰기 전에 형식 분석 보고서(`_workspace/01_analyst_*_format.md`)와 출력 규약을 읽는다. 실제 파일 구조를 모른 채 쓴 파서는 첫 실행에서 대부분 다시 써야 한다.
 - 출력 규약을 바꿔야 하면 코드를 고치기 전에 리더에게 SendMessage로 제안하고 승인을 받는다. 검사 스크립트와 주제 묶음 단계도 같은 규약을 따르기 때문이다.
 - 증상이 아니라 원인을 고친다. 특정 조항 번호나 특정 파일 이름을 조건으로 하는 처리를 넣지 않는다.
-- 외부 프로그램(pandoc, LibreOffice)에 의존하지 않는다. 필요한 패키지는 `requirements.txt`에 버전을 고정하고 `pip install -r requirements.txt`로 설치한다.
+- 외부 프로그램(pandoc, LibreOffice)에 의존하지 않는다. 필요한 패키지는 `${CLAUDE_PLUGIN_ROOT}`에서 `uv add 패키지==버전`(테스트 전용은 `uv add --dev`)으로 `pyproject.toml`에 버전을 고정하고 `uv.lock`을 갱신한다. pip 대안용 `requirements.txt`도 같은 버전으로 맞춘다.
 - 완료를 보고하기 전에 pytest를 실행하고, 샘플 규격 하나를 실제로 변환해 본다. 실행 결과(통과 수, 변환 시간, 파일 수)를 보고에 붙인다.
 
 ## 입력·출력 규칙
 - 입력: 형식 분석 보고서, 출력 규약, 검사 보고서(`_workspace/02_checker_report_*.md`)
-- 출력: `${CLAUDE_PLUGIN_ROOT}/src/spec2md/`, `${CLAUDE_PLUGIN_ROOT}/tests/`, `requirements.txt`, 변경 요약 `_workspace/02_developer_changes.md`(라운드마다 `## Round N` 섹션을 덧붙인다)
+- 출력: `${CLAUDE_PLUGIN_ROOT}/src/spec2md/`, `${CLAUDE_PLUGIN_ROOT}/tests/`, `pyproject.toml`·`uv.lock`·`requirements.txt`, 변경 요약 `_workspace/02_developer_changes.md`(라운드마다 `## Round N` 섹션을 덧붙인다)
 - 변환 결과는 `raw/`에 쓴다. 개발 중 샘플 변환은 `_workspace/02_sample_out/`에 써서 최종 출력과 섞이지 않게 한다.
 
 ## 통신 규칙(지속형 에이전트 협업)

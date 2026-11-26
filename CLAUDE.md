@@ -21,3 +21,4 @@ claude plugin install spec2md@spec2md-local --scope project
 | 2026-11-25 | Harness v2로 처음 구성 | 전체 | - |
 | 2026-11-25 | 분할 규격(`_cover`, `_s00-07` …) 병합 규칙, 제목 해석 규칙(문자 접미 번호·번호 깊이 level·H6·오타 보정), 본문 규칙 보완(TH/TF, 파이프 표 조건, 첨자, OLE 수식 LaTeX 복원) | output-contract.md, inspect_docx.py, check_output.py, check_all.py | 첫 일괄 변환(38개 규격) 형식 분석·검사 결과 |
 | 2026-11-26 | 플러그인 구조로 이동(plugin/), 경로 변수화 | 전체 | 배포·위키 확장 |
+| 2026-11-26 | link 명령·spec-linking·llm-wiki 스킬·wiki-editor 에이전트 추가 | plugin/ | 참조 링크·위키 단계 |

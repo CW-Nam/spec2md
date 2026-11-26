@@ -1,11 +1,11 @@
 ---
 name: spec2md-orchestrator
-description: "3GPP 규격 .docx를 LLM 위키용 조항·주제별 Markdown raw 파일로 바꾸는 전체 작업을 조율한다. 변환 도구 spec2md 개발, 새 규격 형식 분석, specs/ 일괄 변환, 변환 결과 검사, 주제별 묶음을 하나의 흐름으로 처리한다. '3GPP 규격 md로 변환해줘', 'spec2md 만들어줘', '이 TS 변환', 'raw 파일 생성', '주제별로 묶어줘'에 사용하며, 변환 다시 실행, 재변환, 업데이트, 수정, 보완, '표 변환만 다시', '38.331만 다시', '이전 결과를 바탕으로 개선', 새 Release 파일 추가 같은 후속 요청에도 사용한다. docx 구조 질문 하나에 답하는 정도의 단순 질문에는 직접 답한다."
+description: "3GPP 규격 .docx를 LLM 위키용 조항·주제별 Markdown raw 파일로 바꾸는 전체 작업을 조율한다. 변환 도구 spec2md 개발, 새 규격 형식 분석, 3gpp-specs/ 일괄 변환, 변환 결과 검사, 주제별 묶음을 하나의 흐름으로 처리한다. '3GPP 규격 md로 변환해줘', 'spec2md 만들어줘', '이 TS 변환', 'raw 파일 생성', '주제별로 묶어줘'에 사용하며, 변환 다시 실행, 재변환, 업데이트, 수정, 보완, '표 변환만 다시', '38.331만 다시', '이전 결과를 바탕으로 개선', 새 Release 파일 추가 같은 후속 요청에도 사용한다. docx 구조 질문 하나에 답하는 정도의 단순 질문에는 직접 답한다."
 ---
 
 # spec2md 오케스트레이터
 
-3GPP 규격 원본(`specs/*.docx`)에서 LLM 위키를 만들기 전 단계의 raw Markdown(`raw/{spec}/`)을 만든다. 원문을 해석하거나 요약하지 않고 충실하게 옮기는 것이 목표다. 내용이 기술적으로 맞는지는 검증하지 않는다. 다만 변환하면서 조항·표·코드가 빠지지 않았는지는 검사 스크립트로 확인한다. 이 검사는 내용 검증이 아니라 도구가 제대로 동작하는지 확인하는 장치다.
+3GPP 규격 원본(`3gpp-specs/*.docx`)에서 LLM 위키를 만들기 전 단계의 raw Markdown(`raw/{spec}/`)을 만든다. 원문을 해석하거나 요약하지 않고 충실하게 옮기는 것이 목표다. 내용이 기술적으로 맞는지는 검증하지 않는다. 다만 변환하면서 조항·표·코드가 빠지지 않았는지는 검사 스크립트로 확인한다. 이 검사는 내용 검증이 아니라 도구가 제대로 동작하는지 확인하는 장치다.
 
 ## 실행 모드: 혼합
 
@@ -32,7 +32,7 @@ description: "3GPP 규격 .docx를 LLM 위키용 조항·주제별 Markdown raw 
 
 | 경로 | 내용 |
 | --- | --- |
-| `specs/` | 사용자 원본 docx. 읽기만 한다 |
+| `3gpp-specs/` | 사용자 원본 docx. 읽기만 한다 |
 | `${CLAUDE_PLUGIN_ROOT}/src/spec2md/`, `${CLAUDE_PLUGIN_ROOT}/tests/` | 변환 도구 |
 | `raw/{spec}/` | 최종 산출물(출력 규약: `spec-md-conversion/references/output-contract.md`) |
 | `linked/{spec}/` | 링크·앵커·역참조가 들어간 사본(`raw/`는 그대로). 출력 규약 7절. `spec2md link`가 만들고 매번 다시 쓴다 |
@@ -44,7 +44,7 @@ description: "3GPP 규격 .docx를 LLM 위키용 조항·주제별 Markdown raw 
 
 ### 0단계: 요청 분류와 기존 작업 확인
 
-다음을 확인한다: `${CLAUDE_PLUGIN_ROOT}/src/spec2md/`가 있는가, `specs/`의 docx 목록, `raw/`의 기존 출력, `_workspace/`.
+다음을 확인한다: `${CLAUDE_PLUGIN_ROOT}/src/spec2md/`가 있는가, `3gpp-specs/`의 docx 목록, `raw/`의 기존 출력, `_workspace/`.
 
 | 상황 | 진행 |
 | --- | --- |
@@ -57,7 +57,7 @@ description: "3GPP 규격 .docx를 LLM 위키용 조항·주제별 Markdown raw 
 | 주제 묶음만 요청 | 4. 이미 `topics.json`이 있으면 기존 결과를 고치는 작업이다 |
 | `_workspace/`가 있고 완전히 새 입력 세트 | 기존 `_workspace/`를 `_workspace_{YYYYMMDD_HHMM}/`로 옮기고 새로 시작 |
 
-`specs/`가 비어 있으면 사용자에게 docx를 `specs/`에 넣어 달라고 요청하고 멈춘다.
+`3gpp-specs/`가 비어 있으면 사용자에게 docx를 `3gpp-specs/`에 넣어 달라고 요청하고 멈춘다.
 
 ### 1단계: 형식 분석
 
@@ -66,7 +66,7 @@ description: "3GPP 규격 .docx를 LLM 위키용 조항·주제별 Markdown raw 
 1. 샘플을 고른다. 기본 1~3개를 고르되, 크기가 가장 큰 규격, 성격이 다른 규격(예: 절차 중심 TS 38.331, 개요 중심 TS 38.300), 아직 분석하지 않은 Release를 우선한다.
 2. 한 메시지에서 샘플마다 Agent를 병렬로 호출한다. `name`은 지정하지 않는 단발 실행이다.
    - `subagent_type: "spec2md:spec-format-analyst"`
-   - `prompt`: "specs/{file}.docx를 3gpp-docx-structure 스킬로 분석하라. _workspace/01_inspect_{spec}.json과 _workspace/01_analyst_{spec}_format.md를 만들어라. 출력 규약은 ${CLAUDE_PLUGIN_ROOT}/skills/spec-md-conversion/references/output-contract.md다."
+   - `prompt`: "3gpp-specs/{file}.docx를 3gpp-docx-structure 스킬로 분석하라. _workspace/01_inspect_{spec}.json과 _workspace/01_analyst_{spec}_format.md를 만들어라. 출력 규약은 ${CLAUDE_PLUGIN_ROOT}/skills/spec-md-conversion/references/output-contract.md다."
 3. 완료 알림을 기다린다. 보고서들이 출력 규약 변경을 제안하면 메인이 판단해 규약을 고치고, 그 사실을 사용자에게 한 줄로 알린다. 규약을 고치면 `check_output.py`가 규약과 계속 맞는지도 함께 확인한다.
 
 ### 2단계: 개발·보정 루프
@@ -92,7 +92,7 @@ description: "3GPP 규격 .docx를 LLM 위키용 조항·주제별 Markdown raw 
 
 1. 동결 해시가 그대로인지 확인한 뒤 변환한다.
    ```
-   uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md batch specs/ -o raw/ --split-depth {1단계 권장값}
+   uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md batch 3gpp-specs/ -o raw/ --split-depth {1단계 권장값}
    ```
    권장 깊이가 규격마다 다르면 `convert`로 규격별로 실행한다.
 2. 전체를 검사한다.
@@ -171,7 +171,7 @@ return { done, failed }
 ## 테스트 시나리오
 
 ### 정상 흐름
-1. 사용자가 `specs/`에 `38331-i10.docx`와 `38300-i00.docx`를 넣고 "spec2md 만들어서 변환해줘"라고 요청한다.
+1. 사용자가 `3gpp-specs/`에 `38331-i10.docx`와 `38300-i00.docx`를 넣고 "spec2md 만들어서 변환해줘"라고 요청한다.
 2. 0단계에서 도구가 없음을 확인하고, 1단계에서 두 파일을 병렬로 분석한다(권장 깊이 38331=4, 38300=3).
 3. 2단계에서 developer가 구현한다. Round 1 검사에서 병합 표 ERROR가 나오고 Round 2에서 PASS한 뒤 동결한다.
 4. 3단계 `check_all.py`에서 2/2 PASS가 나온다.

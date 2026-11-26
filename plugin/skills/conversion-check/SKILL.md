@@ -11,7 +11,7 @@ description: "spec2md가 만든 Markdown raw 출력(raw/{spec}/)이 원본 docx�
 
 1. 원본 구조 보고서가 없으면 만든다.
    ```
-   uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_PLUGIN_ROOT}/skills/3gpp-docx-structure/scripts/inspect_docx.py" specs/{file}.docx --json _workspace/01_inspect_{spec}.json
+   uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_PLUGIN_ROOT}/skills/3gpp-docx-structure/scripts/inspect_docx.py" 3gpp-specs/{file}.docx --json _workspace/01_inspect_{spec}.json
    ```
 2. 검사 스크립트를 실행한다.
    ```

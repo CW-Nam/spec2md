@@ -43,7 +43,7 @@ def group_specs(docs):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--specs", default="specs")
+    ap.add_argument("--specs", default="3gpp-specs")
     ap.add_argument("--raw", default="raw")
     ap.add_argument("--ws", default="_workspace")
     ap.add_argument("--phase", default="03")

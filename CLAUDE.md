@@ -23,14 +23,14 @@ claude plugin install spec2md@spec2md --scope project
 ```
 uv sync --project plugin                                  # 의존성 설치 (plugin/.venv)
 uv run --project plugin pytest -q plugin                  # 테스트 (pytest 설정이 plugin/pyproject.toml에 있음)
-uv run --project plugin spec2md batch specs/ -o raw/      # 일괄 변환 (--only, --depth CODE=N, --split-depth)
-uv run --project plugin spec2md convert specs/X.docx -o raw/   # 분할 규격은 파트 파일을 모두 넘김
+uv run --project plugin spec2md batch 3gpp-specs/ -o raw/      # 일괄 변환 (--only, --depth CODE=N, --split-depth)
+uv run --project plugin spec2md convert 3gpp-specs/X.docx -o raw/   # 분할 규격은 파트 파일을 모두 넘김
 uv run --project plugin spec2md link raw -o linked        # 참조 링크 사본
 uv run --project plugin spec2md topics raw/{spec}/        # topics/topics.json → 주제 파일
 ```
-`--project`는 작업 폴더를 바꾸지 않으므로 `specs/`, `raw/` 같은 상대 경로는 저장소 루트 기준이다. 검사 스크립트는 각 스킬의 `scripts/`에 있고 `uv run --project plugin python plugin/skills/.../scripts/X.py`로 실행한다 (check_output.py, check_all.py, check_links.py, check_topics.py, lint_wiki.py). 스킬·에이전트 문서의 명령은 `uv run --project "${CLAUDE_PLUGIN_ROOT}" ...` 형식을 쓴다.
+`--project`는 작업 폴더를 바꾸지 않으므로 `3gpp-specs/`, `raw/` 같은 상대 경로는 저장소 루트 기준이다. 검사 스크립트는 각 스킬의 `scripts/`에 있고 `uv run --project plugin python plugin/skills/.../scripts/X.py`로 실행한다 (check_output.py, check_all.py, check_links.py, check_topics.py, lint_wiki.py). 스킬·에이전트 문서의 명령은 `uv run --project "${CLAUDE_PLUGIN_ROOT}" ...` 형식을 쓴다.
 
-**데이터 흐름:** `specs/`(원본 docx) → `raw/`(조항 md) → `linked/`(링크 사본) → `wiki/`. 모두 gitignore 대상이다. `raw/`와 `linked/`는 생성물이라 직접 고치지 않고 재생성한다. 위키는 `linked/`만 인용한다. `_workspace/`는 에이전트 작업 파일이고 `01_analyst_*.md`만 추적한다.
+**데이터 흐름:** `3gpp-specs/`(원본 docx) → `raw/`(조항 md) → `linked/`(링크 사본) → `wiki/`. 모두 gitignore 대상이다. `raw/`와 `linked/`는 생성물이라 직접 고치지 않고 재생성한다. 위키는 `linked/`만 인용한다. `_workspace/`는 에이전트 작업 파일이고 `01_analyst_*.md`만 추적한다.
 출력 형식의 기준은 `plugin/skills/spec-md-conversion/references/output-contract.md`다.
 
 **변경 이력:**
@@ -42,3 +42,4 @@ uv run --project plugin spec2md topics raw/{spec}/        # topics/topics.json �
 | 2026-11-26 | link 명령·spec-linking·llm-wiki 스킬·wiki-editor 에이전트 추가 | plugin/ | 참조 링크·위키 단계 |
 | 2026-11-26 | 마켓플레이스 이름 spec2md-local → spec2md, SessionStart 의존성 확인 훅, 원격 설치 안내, v0.3.0 | marketplace.json, plugin/hooks/, README.md | clone 없이 GitHub에서 설치 |
 | 2026-11-26 | uv로 의존성·실행 관리(uv.lock, `dev` 그룹, 스킬 명령 `uv run --project`), 훅은 uv 설치 확인, v0.4.0 | plugin/pyproject.toml, plugin/uv.lock, plugin/hooks/, 스킬·에이전트, README.md | 시스템 Python에 의존성이 없어도 스킬이 실행되게 |
+| 2026-11-26 | 원본 규격 폴더 `specs/` → `3gpp-specs/` 이름 변경 (check_all.py `--specs` 기본값 포함), v0.4.1 | .gitignore, 문서·스킬·check_all.py | 폴더 용도를 이름에서 분명히 |

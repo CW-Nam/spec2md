@@ -12,7 +12,7 @@ description: "3GPP 규격 .docx를 조항(clause) 단위 Markdown raw 파일로 
 ## 프로젝트 구조
 
 ```
-specs/                     # 사용자가 넣어 둔 원본 .docx (읽기 전용으로 취급)
+3gpp-specs/                     # 사용자가 넣어 둔 원본 .docx (읽기 전용으로 취급)
 ${CLAUDE_PLUGIN_ROOT}/src/spec2md/
 ├── __init__.py            # __version__
 ├── __main__.py            # uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md
@@ -30,14 +30,14 @@ raw/                       # 출력 (output-contract.md)
 ## CLI
 
 ```
-uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md convert specs/38331-i10.docx -o raw/ [--split-depth 3] [--max-chars 60000]
-uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md batch specs/ -o raw/ [--split-depth 3]
+uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md convert 3gpp-specs/38331-i10.docx -o raw/ [--split-depth 3] [--max-chars 60000]
+uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md batch 3gpp-specs/ -o raw/ [--split-depth 3]
 uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md topics raw/38331-i10/
 ```
 
 - `--split-depth`: 이 레벨 이하의 제목마다 파일을 만든다. 기본값 3. 규격마다 알맞은 값이 다르다. 38.331처럼 깊은 규격은 4가 필요할 수 있다.
 - `--max-chars`: 한 파일 본문이 이 값을 넘고 더 깊은 하위 제목이 있으면, 그 파일만 한 단계 더 나눈다. LLM 입력 청크가 지나치게 커지지 않게 하기 위한 장치다.
-- 분할 규격: `convert`는 docx를 여러 개 받을 수 있다(`convert specs/36101-j60_*.docx -o raw/`). 같은 규격 코드의 부분 파일이어야 하며, 파일 이름 순서로 이어 붙여 `raw/36101-j60/` 하나를 만든다. `batch`는 출력 규약 1절의 정규식으로 파일을 규격 코드별로 묶어 처리한다.
+- 분할 규격: `convert`는 docx를 여러 개 받을 수 있다(`convert 3gpp-specs/36101-j60_*.docx -o raw/`). 같은 규격 코드의 부분 파일이어야 하며, 파일 이름 순서로 이어 붙여 `raw/36101-j60/` 하나를 만든다. `batch`는 출력 규약 1절의 정규식으로 파일을 규격 코드별로 묶어 처리한다.
 - `batch`는 한 파일이 실패해도 멈추지 않는다. 실패 목록과 원인을 마지막에 출력하고 종료 코드 1로 끝낸다.
 
 ## 구현 원칙
@@ -47,7 +47,7 @@ uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md topics raw/38331-i10/
 3. **모르는 요소를 조용히 버리지 않는다.** 처리하지 못한 스타일이나 요소는 일반 문단으로 출력하고, 실행이 끝날 때 `unhandled: {style: count}`로 경고한다. 조용히 버리면 검사 스크립트로도 손실을 찾기 어렵다.
 4. **결정적(deterministic) 출력.** 같은 입력이면 바이트 단위로 같은 출력을 낸다. 시각, 난수, dict 순서에 의존하지 않는다. 다시 실행한 결과를 diff로 검토하기 위해서다.
 5. **대용량 대비.** 38.331 같은 규격은 docx가 수십 MB, 조항이 수천 개다. 블록을 한 번에 문자열로 합치지 말고 조항 단위로 써 나간다. 전체 변환은 몇 분 안에 끝나야 한다.
-6. **원본은 읽기만 한다.** `specs/`의 파일을 고치거나 옮기지 않는다.
+6. **원본은 읽기만 한다.** `3gpp-specs/`의 파일을 고치거나 옮기지 않는다.
 7. **의존성은 최소화하고 버전을 고정한다.** 기본 조합은 `python-docx`, `lxml`이다. pandoc이나 LibreOffice 같은 외부 프로그램은 쓰지 않는다. 이 환경에 설치되어 있지 않기 때문이다.
 
 ## 까다로운 부분

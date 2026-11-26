@@ -37,7 +37,7 @@
 
 - Windows 11, PowerShell 기본 + Git Bash. Python 3.11, 의존성 `lxml`만.
 - 기존 출력 규약(`spec-md-conversion/references/output-contract.md`)과 재현성 원칙(실행마다 달라지는 필드 금지)을 따른다.
-- 데이터 폴더(`specs/`, `raw/`, `linked/`, `wiki/`, `_workspace/`)는 **사용자 작업 폴더**에 있고 플러그인 안에 있지 않다. 플러그인은 도구·스킬·에이전트만 담는다.
+- 데이터 폴더(`3gpp-specs/`, `raw/`, `linked/`, `wiki/`, `_workspace/`)는 **사용자 작업 폴더**에 있고 플러그인 안에 있지 않다. 플러그인은 도구·스킬·에이전트만 담는다.
 - raw는 GFM 파이프 표와 HTML `<table>`이 섞여 있다. 표 제목은 `**Table 4.1-1: …**` 한 줄(TH 규칙)로 표 앞에 온다. 제목 안에 LaTeX가 들어 있는 경우가 있어 GFM 자동 slug 앵커는 믿을 수 없다.
 - **링크 뷰어는 VS Code 미리보기·브라우저다(사용자 결정).** 표준 Markdown 상대 링크 + HTML `<a id>` 앵커를 쓴다. Obsidian 위키링크·블록 참조 형식은 만들지 않는다(Obsidian에서는 파일까지만 열린다). 나중의 웹페이지도 같은 형식을 그대로 쓴다. 심볼릭 링크에 기대지 않는다(Windows·브라우저 호환).
 - **위키 페이지 언어는 영어다(사용자 결정).** raw와 같은 언어라 IE·타이머 이름 검색과 원문 대조가 맞는다. query 답은 사용자 언어(한국어)로 준다.
@@ -57,7 +57,7 @@
 
 ### 5.1 플러그인 구조
 
-플러그인은 저장소 안 **`plugin/` 하위 폴더**에 둔다. 저장소 루트는 작업 폴더로 남는다(설계자 결정). 이유: `specs/`(278 MB)·`raw/`(252 MB)·`_workspace/`(52 MB)가 루트에 있어 루트를 플러그인으로 삼으면 설치 시 캐시로 함께 복사된다. 데이터 580 MB를 옮기는 대신 코드(수 MB)를 옮긴다.
+플러그인은 저장소 안 **`plugin/` 하위 폴더**에 둔다. 저장소 루트는 작업 폴더로 남는다(설계자 결정). 이유: `3gpp-specs/`(278 MB)·`raw/`(252 MB)·`_workspace/`(52 MB)가 루트에 있어 루트를 플러그인으로 삼으면 설치 시 캐시로 함께 복사된다. 데이터 580 MB를 옮기는 대신 코드(수 MB)를 옮긴다.
 
 ```
 spec2md/                         # 저장소 루트 = 작업 폴더 (데이터는 여기 그대로)
@@ -76,7 +76,7 @@ spec2md/                         # 저장소 루트 = 작업 폴더 (데이터�
 │   ├── src/spec2md/             # Python 패키지(기존) + link.py 추가
 │   ├── tests/
 │   └── pyproject.toml
-├── specs/ raw/ linked/ wiki/ _workspace/   # 데이터 (gitignore, wiki/는 추적 여부 사용자 선택)
+├── 3gpp-specs/ raw/ linked/ wiki/ _workspace/   # 데이터 (gitignore, wiki/는 추적 여부 사용자 선택)
 ├── docs/
 └── CLAUDE.md                    # 이 저장소에서 플러그인을 개발할 때의 안내
 ```

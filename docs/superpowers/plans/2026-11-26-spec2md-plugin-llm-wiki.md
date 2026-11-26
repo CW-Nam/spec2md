@@ -21,7 +21,7 @@
 - 틀린 링크 금지: 모호(`ambiguous`)·대상 규격 없음(`missing_spec`)·대상 번호 없음(`missing_target`)은 링크하지 않고 `refs.json`에만 남긴다.
 - 위키 페이지는 영어, query 답은 사용자 언어(한국어).
 - 플러그인 이름 `spec2md`, 마켓플레이스 이름 `spec2md-local`. 플러그인 에이전트는 `spec2md:<name>`, 스킬은 `spec2md:<name>`으로 불린다.
-- 플러그인 경로는 스킬·에이전트 본문에서 `${CLAUDE_PLUGIN_ROOT}`(플러그인 루트), 스킬 자기 폴더는 `${CLAUDE_SKILL_DIR}`로 쓴다. 데이터 경로(`specs/`, `raw/`, `linked/`, `wiki/`, `_workspace/`)는 사용자 작업 폴더 기준 상대 경로다.
+- 플러그인 경로는 스킬·에이전트 본문에서 `${CLAUDE_PLUGIN_ROOT}`(플러그인 루트), 스킬 자기 폴더는 `${CLAUDE_SKILL_DIR}`로 쓴다. 데이터 경로(`3gpp-specs/`, `raw/`, `linked/`, `wiki/`, `_workspace/`)는 사용자 작업 폴더 기준 상대 경로다.
 
 ## Review Focus
 
@@ -110,7 +110,7 @@ Expected: `115 passed`
 - 도구 코드 경로 `src/spec2md/`, `tests/` → `${CLAUDE_PLUGIN_ROOT}/src/spec2md/`, `${CLAUDE_PLUGIN_ROOT}/tests/`. 테스트 실행은 `python -m pytest -q "${CLAUDE_PLUGIN_ROOT}/tests"`
 - `subagent_type: "<agent>"` / Workflow `agentType: '<agent>'` → `spec2md:<agent>`
 - 동결 해시 대상 `src/spec2md/*.py` → `${CLAUDE_PLUGIN_ROOT}/src/spec2md/*.py`
-- 데이터 경로(`specs/`, `raw/`, `_workspace/`)는 그대로.
+- 데이터 경로(`3gpp-specs/`, `raw/`, `_workspace/`)는 그대로.
 
 - [ ] **Step 7: 남은 옛 경로가 없는지 확인**
 

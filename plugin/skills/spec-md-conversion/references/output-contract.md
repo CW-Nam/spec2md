@@ -16,7 +16,7 @@
 ## 1. 디렉터리 구조
 
 ```
-raw/{docx 파일 이름에서 확장자 뺀 값}/   예: specs/38331-i10.docx → raw/38331-i10/
+raw/{docx 파일 이름에서 확장자 뺀 값}/   예: 3gpp-specs/38331-i10.docx → raw/38331-i10/
 ├── manifest.json                      # 조항 목록과 통계 (필수)
 ├── clauses/                           # 조항 단위 Markdown (필수)
 │   ├── 0001_foreword.md

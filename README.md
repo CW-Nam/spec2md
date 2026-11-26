@@ -5,7 +5,7 @@
 ## 흐름
 
 ```
-specs/*.docx  ──convert/batch──▶  raw/{spec}/      조항별 md, manifest.json, media/, topics/
+3gpp-specs/*.docx  ──convert/batch──▶  raw/{spec}/      조항별 md, manifest.json, media/, topics/
                                      │
                                   ──link──▶  linked/{spec}/   참조 링크·<a id> 앵커·"Referenced by" 절
                                                  │
@@ -14,7 +14,7 @@ specs/*.docx  ──convert/batch──▶  raw/{spec}/      조항별 md, manif
 
 - `raw/`는 원문에 충실한 변환본이고, `linked/`는 그 사본에 링크를 더한 것이다. 둘 다 생성물이라 직접 고치지 않고 다시 만든다.
 - 위키는 `linked/`만 인용한다.
-- `specs/`, `raw/`, `linked/`, `wiki/`는 git에 올리지 않는다.
+- `3gpp-specs/`, `raw/`, `linked/`, `wiki/`는 git에 올리지 않는다.
 
 ## 설치
 
@@ -55,7 +55,7 @@ uv를 쓸 수 없으면 `pip install -r <플러그인 폴더>/requirements.txt` 
 
 **업데이트:** `claude plugin marketplace update spec2md` 후 `/plugin`에서 업데이트한다. 원격 설치본은 `~/.claude/plugins/cache/` 아래 복사본이라, 저장소에서 `plugin/.claude-plugin/plugin.json`의 `version`을 올려야 새 내용이 내려간다.
 
-변환·링크·위키 작업 폴더(`specs/`, `raw/`, `linked/`, `wiki/`)는 Claude Code를 연 현재 폴더 기준이다.
+변환·링크·위키 작업 폴더(`3gpp-specs/`, `raw/`, `linked/`, `wiki/`)는 Claude Code를 연 현재 폴더 기준이다.
 
 ### 개발자: clone해서 로컬 마켓플레이스로 설치
 
@@ -77,16 +77,16 @@ claude plugin install spec2md@spec2md --scope project
 
 자연어로 요청하면 `spec2md-orchestrator` 스킬이 형식 분석 → 도구 수정 → 일괄 변환 → 검사 → 주제 묶음을 조율한다.
 
-- "specs/ 규격 전부 md로 변환해줘", "38.331만 다시 변환해줘"
+- "3gpp-specs/ 규격 전부 md로 변환해줘", "38.331만 다시 변환해줘"
 - "변환 결과 검사해줘", "주제별로 묶어줘"
 - "링크 만들어줘", "○○ 주제 위키에 넣어줘", "위키 점검"
 
 ### CLI 직접 실행
 
 ```
-uv run --project plugin spec2md batch specs/ -o raw/                 # 일괄 변환
-uv run --project plugin spec2md batch specs/ -o raw/ --only 38331-j40 --depth 38331-j40=4
-uv run --project plugin spec2md convert specs/24007-j50.docx -o raw/  # 한 규격
+uv run --project plugin spec2md batch 3gpp-specs/ -o raw/                 # 일괄 변환
+uv run --project plugin spec2md batch 3gpp-specs/ -o raw/ --only 38331-j40 --depth 38331-j40=4
+uv run --project plugin spec2md convert 3gpp-specs/24007-j50.docx -o raw/  # 한 규격
 uv run --project plugin spec2md link raw -o linked                   # 참조 링크 사본
 uv run --project plugin spec2md topics raw/38213-j50/                # topics/topics.json → 주제 파일
 ```
@@ -101,7 +101,7 @@ uv run --project plugin spec2md topics raw/38213-j50/                # topics/to
 | 스크립트 | 검사 대상 |
 | --- | --- |
 | `plugin/skills/conversion-check/scripts/check_output.py` | 한 규격의 raw 출력 (제목 누락, manifest 불일치, 깨진 이미지 링크, 코드 펜스 등) |
-| `plugin/skills/spec2md-orchestrator/scripts/check_all.py` | `specs/` 전체에 대한 raw 출력 |
+| `plugin/skills/spec2md-orchestrator/scripts/check_all.py` | `3gpp-specs/` 전체에 대한 raw 출력 |
 | `plugin/skills/spec-linking/scripts/check_links.py` | `linked/`의 링크·앵커·원문 일치 |
 | `plugin/skills/topic-grouping/scripts/check_topics.py` | `topics.json` |
 | `plugin/skills/llm-wiki/scripts/lint_wiki.py` | `wiki/` |

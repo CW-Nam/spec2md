@@ -183,3 +183,51 @@ def test_keyword_variants_pass(tmp_path):
     assert "[Clause 5](" in t and "[Annexes B](" in t and "[figure 5-1](" in t
     r = _run(tmp_path, out, raw)
     assert r.returncode == 0, r.stdout
+
+
+def test_duplicate_caption_anchors_in_one_file(tmp_path):
+    # 같은 파일 안 같은 번호의 두 번째 캡션은 table-N~2 앵커를 받고, 같은 하위 조항의 참조가 그곳으로 링크된다
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    f = "clauses/0001_8.13.2_f.md"
+    make_spec(raw, "36101-j60", "36.101", "19.6.0", [
+        {"clause": "8.13.2", "title": "FDD", "level": 3, "parent": None, "file": f,
+         "body": "## 8.13.2.1.1 CA\n\nresults in Table 8.13.2.1.1-2.\n\n**Table 8.13.2.1.1-2: For CA**\n\n"
+                 "## 8.13.2.1.2 DC\n\nresults in Table 8.13.2.1.1-2.\n\n**Table 8.13.2.1.1-2: For DC**\n"},
+    ])
+    out = tmp_path / "linked"
+    run_link(str(raw), str(out))
+    t = (out / "36101-j60" / f).read_text(encoding="utf-8")
+    assert '<a id="table-8.13.2.1.1-2~2"></a>\n**Table 8.13.2.1.1-2: For DC**' in t
+    assert "[Table 8.13.2.1.1-2](0001_8.13.2_f.md#table-8.13.2.1.1-2~2)" in t
+    r = _run(tmp_path, out, raw)
+    assert r.returncode == 0, r.stdout
+    _rw(out / "36101-j60" / f, lambda s: s.replace("results in [Table 8.13.2.1.1-2]", "results in [Table 8.13.2.1.1-3]"))
+    r = _run(tmp_path, out, raw)
+    assert r.returncode == 1 and "anchor mismatch" in r.stdout
+
+
+def test_override_with_corrected_number_passes(tmp_path):
+    # 사용자가 지정한 대상(번호 오타 보정)은 링크 텍스트 번호와 앵커 번호가 달라도 refs.json의 override 항목이면 통과
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    fa, fb = "clauses/0001_5.3_a.md", "clauses/0001_5.3_b.md"
+    make_spec(raw, "38213-j50", "38.213", "19.0.0", [
+        {"clause": "5.3", "title": "A", "level": 2, "parent": None, "file": fa, "body": "also Table 5.3.5-9 here.\n"}])
+    make_spec(raw, "38214-j50", "38.214", "19.0.0", [
+        {"clause": "5.3", "title": "B", "level": 2, "parent": None, "file": fb,
+         "body": "**Table 5.3.5-1: Channel bandwidths**\n"}])
+    line = next(i for i, s in enumerate((raw / "38213-j50" / fa).read_text(encoding="utf-8").split("\n"), 1)
+                if s.startswith("also"))
+    ov = tmp_path / "ov.json"
+    ov.write_text(json.dumps({"overrides": [{"spec": "38213-j50", "file": fa, "line": line, "text": "Table 5.3.5-9",
+                                             "target_spec": "38.214", "target_id": "5.3.5-1"}]}), encoding="utf-8")
+    out = tmp_path / "linked"
+    run_link(str(raw), str(out), overrides=str(ov))
+    r = _run(tmp_path, out, raw)
+    assert r.returncode == 0, r.stdout
+    # override가 아닌 같은 링크는 오류
+    p = out / "38213-j50" / "refs.json"
+    _rw(p, lambda s: s.replace('"override": true', '"override": false'))
+    r = _run(tmp_path, out, raw)
+    assert r.returncode == 1 and "anchor mismatch" in r.stdout

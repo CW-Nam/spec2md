@@ -16,7 +16,7 @@ uv sync --project plugin
 uv run --project plugin pytest -q plugin
 uv run --project plugin spec2md batch 3gpp-specs/ -o raw/
 uv run --project plugin spec2md convert 3gpp-specs/X.docx -o raw/
-uv run --project plugin spec2md link raw -o linked
+uv run --project plugin spec2md link raw -o linked --overrides _workspace/05_link_overrides.json
 uv run --project plugin spec2md topics raw/{spec}/
 ```
 
@@ -33,7 +33,7 @@ uv run --project plugin spec2md topics raw/{spec}/
 | 변환 도구 개발 | `spec-md-conversion/SKILL.md` | |
 | 단일 규격 변환 검사 | `conversion-check/SKILL.md` | `check_output.py` |
 | 일괄 변환 검사 | `spec2md-orchestrator/SKILL.md` | `check_all.py` |
-| 참조 링크 생성과 검사 | `spec-linking/SKILL.md` | `check_links.py`, `mk_unresolved.py`(검사 뒤 미해결 참조 HTML) |
+| 참조 링크 생성과 검사 | `spec-linking/SKILL.md` | `check_links.py`, `mk_unresolved.py`(검사 뒤 미해결 참조 점검·수정 HTML) |
 | 주제 분류와 검사 | `topic-grouping/SKILL.md` | `check_topics.py` |
 | 위키 작성·질의·점검 | `llm-wiki/SKILL.md` | `lint_wiki.py` |
 

@@ -161,3 +161,64 @@ def test_unsafe_out_refused(tmp_path, which):
     assert _snap(raw) == before
     with pytest.raises(ValueError):
         run_link(raw, out)
+
+
+def _build_overrides(tmp_path):
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    fa, fb = "clauses/0001_5.3_a.md", "clauses/0001_5.3_b.md"
+    # 38101-3-j70 밴드 표처럼 규격 번호 없이 다른 파트의 표를 가리키는 참조와, 번호 오타(Table 5.3.5-9)
+    make_spec(raw, "38213-j50", "38.213", "19.0.0", [
+        {"clause": "5.3", "title": "A", "level": 2, "parent": None, "file": fa,
+         "body": "n5 See n5 channel bandwidths in Table 5.3.5-1\n\nalso Table 5.3.5-9 and Table 7.7-7.\n"},
+    ])
+    make_spec(raw, "38214-j50", "38.214", "19.0.0", [
+        {"clause": "5.3", "title": "B", "level": 2, "parent": None, "file": fb,
+         "body": "**Table 5.3.5-1: Channel bandwidths**\n"},
+    ])
+    lines = (raw / "38213-j50" / fa).read_text(encoding="utf-8").split("\n")
+    l1 = next(i for i, s in enumerate(lines, 1) if s.startswith("n5 "))
+    l2 = next(i for i, s in enumerate(lines, 1) if s.startswith("also "))
+    ov = tmp_path / "ov.json"
+    ov.write_text(json.dumps({"overrides": [
+        {"spec": "38213-j50", "file": fa, "line": l1, "text": "Table 5.3.5-1",
+         "target_spec": "38.214", "target_id": "5.3.5-1"},
+        {"spec": "38213-j50", "file": fa, "line": l2, "text": "Table 5.3.5-9",
+         "target_spec": "38.214", "target_id": "5.3.5-1"},
+        {"spec": "38213-j50", "file": fa, "line": l2, "text": "Table 7.7-7",
+         "target_spec": "38.214", "target_id": "7.7-7"},             # 대상 없음
+        {"spec": "38213-j50", "file": fa, "line": 999, "text": "Table 1.1-1",
+         "target_spec": "38.214", "target_id": "5.3.5-1"},           # 그 위치에 참조 없음
+    ]}), encoding="utf-8")
+    return str(raw), str(tmp_path / "out"), str(ov), fa, fb
+
+
+def test_overrides(tmp_path):
+    raw, out, ov, fa, fb = _build_overrides(tmp_path)
+    stats = run_link(raw, out, overrides=ov)
+    assert stats.overrides == 2
+    assert len(stats.warnings) == 2
+    assert "7.7-7" in stats.warnings[0] and "999" in stats.warnings[1]
+    t = _read(f"{out}/38213-j50/{fa}")
+    assert "[Table 5.3.5-1](../../38214-j50/clauses/0001_5.3_b.md#table-5.3.5-1)" in t
+    assert "[Table 5.3.5-9](../../38214-j50/clauses/0001_5.3_b.md#table-5.3.5-1)" in t
+    assert "Table 7.7-7." in t
+    refs = json.loads(_read(f"{out}/38213-j50/refs.json"))["refs"]
+    assert [(r["text"], r["status"], r.get("override", False), r["target_spec"], r["target_id"]) for r in refs] == [
+        ("Table 5.3.5-1", "resolved", True, "38.214", "5.3.5-1"),
+        ("Table 5.3.5-9", "resolved", True, "38.214", "5.3.5-1"),
+        ("Table 7.7-7", "missing_target", False, "38.213", "7.7-7"),
+    ]
+    assert "## Referenced by" in _read(f"{out}/38214-j50/{fb}")
+
+
+def test_overrides_missing_file_is_empty(tmp_path):
+    raw, out = _build(tmp_path)
+    assert run_link(raw, out, overrides=str(tmp_path / "none.json")).overrides == 0
+
+
+def test_cli_overrides(tmp_path, capsys):
+    raw, out, ov, fa, fb = _build_overrides(tmp_path)
+    assert main(["link", raw, "-o", out, "--overrides", ov]) == 0
+    err = capsys.readouterr().err
+    assert "overrides: 2 applied" in err and "warning: override" in err

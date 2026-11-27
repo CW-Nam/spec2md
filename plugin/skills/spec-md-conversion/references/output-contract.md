@@ -67,9 +67,9 @@ source_file: "38331-i10.docx"
 
 - 필수 키: `spec`, `version`, `clause`, `title`, `level`, `source_file`.
 - **제목 해석 규칙.** 기준 구현은 `3gpp-docx-structure/scripts/inspect_docx.py`의 `para_style`·`parse_clause`·`clause_level`·`clause_parent`다. 변환기는 이 함수들과 같은 결과를 내야 한다(검사 스크립트가 이 결과와 대조한다).
-  - 제목 문단: 스타일 이름 `heading N`, 3GPP 전용 `H6`(정의상 `outlineLvl` 9이지만 6수준 조항), 또는 문단·스타일 `outlineLvl` 0~8. `outlineLvl` 9는 '본문'이므로 제목이 아니다. **표 셀 안의 제목 스타일 문단은 제목이 아니다**(분할 기준이 아님, 본문으로 출력).
+  - 제목 문단: 스타일 이름 `heading N`, `Header N`(38.101-5의 사용자 정의 제목 스타일, `outlineLvl` 없음), 3GPP 전용 `H6`(정의상 `outlineLvl` 9이지만 6수준 조항), 또는 문단·스타일 `outlineLvl` 0~8. 쪽 머리글 스타일 `header`(번호 없음)는 제목이 아니다. `outlineLvl` 9는 '본문'이므로 제목이 아니다. **표 셀 안의 제목 스타일 문단은 제목이 아니다**(분할 기준이 아님, 본문으로 출력).
   - 제목 텍스트: `w:t`와 수식 `m:t` 텍스트를 이어 붙이고(제목 안 수식은 LaTeX가 아니라 평문), 줄바꿈(`w:br`)은 공백 하나로 접는다. `Annex A (normative): <br>Measurement channels` → clause `A`, title `Measurement channels`.
-  - 조항 번호 정규식: `^\s*((?:[A-Z]{1,2}|\d+[A-Za-z]{0,2}\d*)(?:\.(?:\d+[A-Za-z]{0,2}\d*|[A-Z]))*)\.?[\s ]+(.+)$` (첫 성분이 숫자이거나 점이 있어야 번호로 인정). `4.3A`, `9.4.1a`, `5.3.5.13b1`, `B.2.3B.4A`, `F.5.F`, 끝의 점(`6.3.3.1.`), NBSP 구분을 처리한다.
+  - 조항 번호 정규식: `^\s*((?:[A-Z]{1,2}|\d+[A-Za-z]{0,2}\d*)(?:\.(?:\d+[A-Za-z]{0,2}\d*|[A-Z]))*)\.?:?[\s ]+(.+)$` (첫 성분이 숫자이거나 점이 있어야 번호로 인정). `4.3A`, `9.4.1a`, `5.3.5.13b1`, `B.2.3B.4A`, `F.5.F`, 끝의 점(`6.3.3.1.`), 번호 뒤 콜론(`A.1:<TAB>Title`, 38.306), NBSP 구분을 처리한다.
   - **level**: 부속서 제목(`Annex X`)은 1. 번호 있는 조항은 **번호 깊이**(점 개수 + 1)다. 스타일 수준이 아니다. 3GPP는 부속서 `A.1`에 `heading 1`을 쓰고, 본문에서도 스타일과 번호 깊이가 어긋나는 일이 흔하기 때문이다. 번호 없는 제목만 스타일 수준을 쓴다.
   - **parent**: 번호에서 마지막 성분을 뗀 값(`5.3.5` → `5.3`, `A.1` → `A`). 최상위는 null. 번호 없는 제목의 parent는 바로 앞의 더 얕은 제목의 clause다.
   - 번호 없는 IE·필드 제목(38.331 `–<TAB>RRCReconfiguration`): 앞의 대시(`–`, `-`)와 공백은 표지이므로 title에서 뗀다. clause는 title의 slug다.
@@ -178,15 +178,21 @@ linked/
     └── clauses/*.md            # raw와 같은 파일 이름
 ```
 
-**앵커.** 표 캡션(`**Table N: …**` 또는 `Table N: …`), 그림 캡션(`*Figure N: …*` 또는 `Figure N: …`), 파일 안 하위 제목 줄 바로 앞에 한 줄을 넣는다: `<a id="table-10.1-1"></a>`, `<a id="figure-…"></a>`, `<a id="clause-5.1.2"></a>`. 줄 전체가 앵커이며 뒤에 빈 줄을 두지 않는다. 같은 번호가 둘 이상(모호)이면 앵커를 만들지 않는다. 파일 맨 위가 목적지인 조항은 앵커 없이 파일 경로만 링크한다.
+**앵커.** 표·그림 캡션 줄과 파일 안 하위 제목 줄 바로 앞에 한 줄을 넣는다: `<a id="table-10.1-1"></a>`, `<a id="figure-…"></a>`, `<a id="clause-5.1.2"></a>`. 줄 전체가 앵커이며 뒤에 빈 줄을 두지 않는다. 파일 맨 위가 목적지인 조항은 앵커 없이 파일 경로만 링크한다.
 
-**링크.** 해석된(`resolved`) 참조만 링크한다. 본문은 `[clause 5.1.2](상대경로.md#anchor)`, HTML 표 안은 `<a href="상대경로.md#anchor">clause 5.1.2</a>`. 상대 경로는 항상 `/` 구분이며 다른 규격은 `../../{code}/clauses/{file}.md`다. 링크 텍스트는 원문 글자 그대로다(`clause`·`Table` 같은 단어와 번호). 코드 펜스, 수식, HTML 태그, 제목·캡션 줄 안의 참조는 링크하지 않는다.
+- 캡션 줄: 줄 앞이 `Table`·`Tables`·`Figure`·`Figures`·`Fig.`이고 굵게(`**`)·기울임(`*`)·인용(`> `)이 앞에 올 수 있다. 단어와 번호 사이는 공백(NBSP 포함)이나 콜론(`Table: 5.3.3-2`)이고 붙여 쓰기도 한다(`Table5.2.3.1.16-4`). 꾸밈이 없으면 번호 뒤 콜론이 있거나, 앞뒤가 빈 줄인 단독 문단에서 대문자·괄호로 시작해 문장 부호로 끝나지 않는 제목이 이어져야 한다(`Table 9.7.2.1-2 Minimum requirement (FDD …)`). 원문이 캡션에 제목 수준을 준 `# Table 6.1-1: …` 제목 줄도 콜론이 있으면 캡션이다. 번호 안의 공백과 하이픈 앞 점(`A.5.2.3.1 -1`, `A.9.6.1.1.-2`)은 색인 키에서 뺀다. `7.2.2-1 H:`처럼 번호 뒤에 공백과 글자 하나가 붙은 캡션은 색인하지 않는다.
+- 같은 번호가 둘 이상이면 그 번호는 모호하다. 후보마다 앵커를 달고, 한 파일에 같은 번호가 또 나오면 두 번째부터 `~2`, `~3`을 붙인다(`table-8.13.2.1.1-2~2`). 모호한 번호는 같은 규격 안에서 참조와 같은 파일·같은 하위 제목 아래의 후보가 하나뿐일 때만 그 후보로 해석한다.
+- 제목·캡션이 Void뿐인 번호(`Table 5.5-2: Void`, `## 7.4A.3 Void`, 본문 없는 `Void` 조항)는 `void`다.
+
+**링크.** `resolved`와, 위치(Void 제목·캡션 줄)가 있는 `void` 참조를 링크한다. 본문 없는 Void 조항은 링크하지 않는다. 번호가 정확히 같은 대상이 없으면 대소문자만 다른 번호가 하나뿐일 때 그것으로 해석한다(`5.3.19a` → `5.3.19A`). 본문 없는 조항은 첫 하위 조항 파일로, 하위 조항이 없으면 바로 뒤의 글자 접미 조항(`4.3.2` → `4.3.2a`) 파일로 링크한다. 본문은 `[clause 5.1.2](상대경로.md#anchor)`, HTML 표 안은 `<a href="상대경로.md#anchor">clause 5.1.2</a>`. 상대 경로는 항상 `/` 구분이며 다른 규격은 `../../{code}/clauses/{file}.md`다. 링크 텍스트는 원문 글자 그대로다(`clause`·`Table` 같은 단어와 번호). 코드 펜스, 수식, HTML 태그, 제목·캡션 줄 안의 참조는 링크하지 않는다.
 
 **media.** 본문의 `](../media/`와 `src="../media/`는 `raw/{code}/media/`를 가리키도록 `linked/{code}/clauses`에서 본 상대 경로로 바꾼다.
 
-**refs.json.** `{"spec", "version", "refs": [...]}`. 항목: `from_file`, `from_clause`, `line`, `text`, `kind`(`table`/`figure`/`clause`), `target_spec`(규격 번호), `target_id`, `target_file`, `anchor`, `status`. `status`는 `resolved`, `missing_target`(규격은 있으나 번호가 없음), `missing_spec`(규격이 코퍼스에 없음), `ambiguous`(번호가 둘 이상) 중 하나다. 파일·줄·위치 순으로 정렬한다.
+**refs.json.** `{"spec", "version", "refs": [...]}`. 항목: `from_file`, `from_clause`, `line`, `text`, `kind`(`table`/`figure`/`clause`), `target_spec`(규격 번호), `target_id`, `target_file`, `anchor`, `status`. `status`는 `resolved`, `missing_target`(규격은 있으나 번호가 없음), `missing_spec`(규격이 코퍼스에 없음), `ambiguous`(번호가 둘 이상), `void`(대상이 Void) 중 하나다. 사용자 지정 대상으로 해석한 항목에는 `"override": true`가 붙는다. 파일·줄·위치 순으로 정렬한다.
 
-**index.json.** 규격 코드마다 `spec_number`, `version`, `release`와 `clauses`·`tables`·`figures`(번호 → `{file, anchor}` 또는 `{ambiguous: true}`). 같은 규격 번호의 여러 버전이 있으면 가장 높은 버전의 코드를 대상으로 삼는다.
+**사용자 지정 대상(`--overrides`).** `{"overrides": [{"spec", "file", "line", "text", "target_spec", "target_id"[, "target_file", "target_anchor"]}]}`. `spec`(규격 코드)·`file`·`line`(raw 줄)·`text`가 같은 참조를 `target_spec`의 `target_id`(참조와 같은 종류)로 해석해 `resolved`로 링크한다. 대상 번호가 모호하면 `target_file`(과 `target_anchor`)로 후보를 고른다. 참조나 대상을 찾지 못한 항목은 적용하지 않고 경고로 알린다. 링크 텍스트는 원문 그대로이므로, 번호를 바로잡은 지정은 텍스트 번호와 앵커 번호가 다를 수 있다(검사기는 `override` 항목에만 이를 허용한다). 파일이 없으면 지정이 없는 것으로 본다. 점검 HTML(`mk_unresolved.py`)이 이 파일을 만든다.
+
+**index.json.** 규격 코드마다 `spec_number`, `version`, `release`와 `clauses`·`tables`·`figures`(번호 → `{file, anchor}` 또는 `{ambiguous: true, candidates: [{file, anchor}, …]}`). 같은 규격 번호의 여러 버전이 있으면 가장 높은 버전의 코드를 대상으로 삼는다.
 
 **역참조 절.** 다른 파일에서 해석되어 이 파일을 가리키는 링크가 있으면 파일 끝에 붙는다(같은 파일 안 참조는 제외). 출처 규격 코드와 파일 경로, 대상 앵커, 참조 텍스트가 모두 같은 항목은 한 번만 기록한다.
 

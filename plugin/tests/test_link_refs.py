@@ -487,3 +487,93 @@ def test_bracket_designator_applies_to_every_item_inside(c):
 
 def test_bracket_cite_without_space_after_comma(c):
     assert ids(find(c, "see [5,clause 4].")) == [("clause", "4", "38.211", "missing_spec")]
+
+
+def test_case_only_difference_resolves_when_unique(tmp_path):
+    # 24.501: 제목은 "5.3.19A", 본문은 "subclause 5.3.19a". 36.300: "7.3b-3A"(EPS)와 "7.3b-3a"(5GS)는
+    # 다른 그림이라 정확히 같은 번호만 연결하고, 대소문자만 다른 후보가 둘이면 해석하지 않는다.
+    make_spec(tmp_path, "24501-j80", "24.501", "19.8.0", [
+        dict(clause="5.3.19A", title="Specific requirements for UE configured to use timer T3245", level=3,
+             parent="5.3", file="clauses/0001_5.3.19A_s.md", body="x\n"),
+        dict(clause="7.3b", title="EDT", level=2, parent="7", file="clauses/0002_7.3b_e.md",
+             body="*Figure: 7.3b-3A: MO-EDT EPS*\n\n*Figure: 7.3b-3a: MO-EDT 5GS*\n"),
+    ])
+    c = build_corpus_index(str(tmp_path))
+    spec = c.specs["24501-j80"]
+    refs = find_refs("see subclause 5.3.19a, figure 7.3b-3A, figure 7.3b-3a and figure 7.3B-3A.", spec, c)
+    assert [(r.target_id, r.status, r.target and r.target.anchor) for r in refs] == [
+        ("5.3.19a", "resolved", None),
+        ("7.3b-3A", "resolved", "figure-7.3b-3A"),
+        ("7.3b-3a", "resolved", "figure-7.3b-3a"),
+        ("7.3B-3A", "missing_target", None),
+    ]
+
+
+def test_designator_forms_from_corpus(c):
+    # 실제 원문의 다른 규격 지시: "of" 없이 TS가 바로 붙음(36101, 36133), "ofTS"(36321),
+    # TS 없는 규격 번호(36133, 38101-1, 38101-3), 괄호 안 쉼표 뒤 지시(36321)
+    cases = [
+        ("Note 3: As per Table 4.2-2 TS 36.211 [4]. Note 4", [("table", "4.2-2", "36.211")]),
+        ("defined in clause 10.2.6 TS 36.211 [16], on non-anchor carrier", [("clause", "10.2.6", "36.211")]),
+        ("within the RA Response window defined in clause 5.1.4 TS 36.321.", [("clause", "5.1.4", "36.321")]),
+        ("(see clause 5.1.1.2 ofTS 36.213 [2]);", [("clause", "5.1.1.2", "36.213")]),
+        ("an accuracy as specified in table 6.3.5.2.1-1 of 36.101[5].", [("table", "6.3.5.2.1-1", "36.101")]),
+        ("MPR as defined in clause 6.2B.2.1 of 38.101-3 v15.5.0 |", [("clause", "6.2B.2.1", "38.101-3")]),
+        ("(From Table 5.3.5-1 of 38.101-1)", [("table", "5.3.5-1", "38.101-1")]),
+        ("as defined in clause 6.2.1 or 6.2A1.1 of 38.101-1 [2]; in case",
+         [("clause", "6.2.1", "38.101-1"), ("clause", "6.2A1.1", "38.101-1")]),
+        ("in clause 8.2.1.2.14 of 38.133 [15] and clause 7.32.2.12 of 36.133 [16] respectively.",
+         [("clause", "8.2.1.2.14", "38.133"), ("clause", "7.32.2.12", "36.133")]),
+        ("is not applicable (clause 4.2.7.9, TS 38.306 [22]), the UE may",
+         [("clause", "4.2.7.9", "38.306")]),
+    ]
+    for s, want in cases:
+        assert [r[:3] for r in ids(find(c, s))] == want, s
+
+
+def test_designator_forms_keep_own_spec(c):
+    # 쉼표 뒤 지시가 다음 참조의 앞쪽 지시이면(36104) 앞 참조는 현재 규격이다. 숫자 값은 규격 번호가 아니다.
+    assert [r[:3] for r in ids(find(c, "as specified in clause 4.2, TS 25.104 [6] clause 5.2 and"))] == [
+        ("clause", "4.2", "38.213"), ("clause", "5.2", "25.104")]
+    assert [r[:3] for r in ids(find(c, "see Table 4.2-1 of 10.000 MHz"))] == [("table", "4.2-1", "38.213")]
+
+
+DUP_SAME_FILE = (
+    # 36101-j60 8.13.2: 원문이 두 하위 조항의 표에 같은 번호 8.13.2.1.1-2를 썼다(두 번째는 8.13.2.1.2-2의 오타)
+    "## 8.13.2.1.1 CA\n\nresults in Table 8.13.2.1.1-2.\n\n**Table 8.13.2.1.1-2: For CA**\n\n| a |\n| - |\n\n"
+    "## 8.13.2.1.2 DC\n\nresults in Table 8.13.2.1.1-2.\n\n**Table 8.13.2.1.1-2: For DC**\n\n| a |\n| - |\n"
+)
+
+
+def test_ambiguous_resolved_by_same_section(tmp_path):
+    make_spec(tmp_path, "36101-j60", "36.101", "19.6.0", [
+        dict(clause="8.13.2", title="FDD", level=3, parent="8.13", file="clauses/0001_8.13.2_f.md",
+             body=DUP_SAME_FILE),
+        dict(clause="8.14", title="Other", level=2, parent="8", file="clauses/0002_8.14_o.md",
+             body="see Table 8.13.2.1.1-2.\n"),
+    ])
+    c = build_corpus_index(str(tmp_path))
+    spec = c.specs["36101-j60"]
+    f1, f2 = "clauses/0001_8.13.2_f.md", "clauses/0002_8.14_o.md"
+    text = (tmp_path / "36101-j60" / f1).read_text(encoding="utf-8")
+    refs = find_refs(text, spec, c, f1)
+    assert [(r.status, r.target.anchor) for r in refs] == [
+        ("resolved", "table-8.13.2.1.1-2"), ("resolved", "table-8.13.2.1.1-2~2")]
+    lines = text.split("\n")
+    assert [lines[r.target.line - 1] for r in refs] == [
+        "**Table 8.13.2.1.1-2: For CA**", "**Table 8.13.2.1.1-2: For DC**"]
+    # 다른 조항에서는 어느 표인지 알 수 없다
+    assert find_refs("see Table 8.13.2.1.1-2.\n", spec, c, f2)[0].status == "ambiguous"
+    assert find_refs("see Table 8.13.2.1.1-2.\n", spec, c)[0].status == "ambiguous"
+
+
+def test_void_status(tmp_path):
+    make_spec(tmp_path, "36104-j20", "36.104", "19.2.0", [
+        dict(clause="5.2", title="Void", level=2, parent="5", file=None, body=""),
+        dict(clause="5.5", title="Operating bands", level=2, parent="5", file="clauses/0001_5.5_o.md",
+             body="**Table\xa05.5-2: Void**\n"),
+    ])
+    c = build_corpus_index(str(tmp_path))
+    refs = find_refs("see clause 5.2, Table 5.5-2 and Table 5.5-9.", c.specs["36104-j20"], c)
+    assert [(r.target_id, r.status, r.target and r.target.anchor) for r in refs] == [
+        ("5.2", "void", None), ("5.5-2", "void", "table-5.5-2"), ("5.5-9", "missing_target", None)]

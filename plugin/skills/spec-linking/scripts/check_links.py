@@ -5,9 +5,12 @@ Usage:
   python check_links.py LINKED --raw RAW [--json OUT.json]
 
 ERROR checks
-  * anchored links are semantically right: text number N <-> anchor table-N /
-    figure-N / clause-N (keyword Table/Figure/clause/subclause/section/Annex, either
-    initial case, singular or plural, must match)
+  * anchored links are semantically right (refs.json rows with "override": true may link
+    to another number of the same kind): text number N <-> anchor table-N /
+    figure-N / clause-N (N compared ignoring case: the linker links "5.3.19a" to the
+    only candidate "5.3.19A"; keyword Table/Figure/clause/subclause/section/Annex,
+    either initial case, singular or plural, must match; a duplicate number inside
+    one file has anchor N~2, N~3 ...)
   * no Markdown link inside an HTML <table> region (must be <a href>; nesting counted)
   * every markdown link / <a href> that points to a .md file: the file exists
     in LINKED and the #anchor exists there as an `<a id="..."></a>` line
@@ -47,7 +50,7 @@ CHECK_A_RE = re.compile(rf'<a href="({_HREF})">')
 _KEYWORD_RE = re.compile(rf"(?:({_WORD})[^\S\n]+)?([0-9A-Z][0-9A-Za-z.\-]*)\Z")
 _KIND = {"table": "table", "figure": "figure", "clause": "clause", "subclause": "clause",
          "section": "clause", "annex": "clause", "annexe": "clause"}
-STATUSES = ("resolved", "missing_target", "missing_spec", "ambiguous")
+STATUSES = ("resolved", "missing_target", "missing_spec", "ambiguous", "void")
 
 
 def read_bytes(path):
@@ -152,8 +155,10 @@ class Checker:
                 self.err("markdown_link_in_table", f"{code}/{rel}:{line}",
                          f"markdown link inside <table>: {m.group(1)}")
 
-    def check_semantics(self, code, rel, text):
-        """Anchor must be {table|figure|clause}-N with the same N as the link text."""
+    def check_semantics(self, code, rel, text, overridden=frozenset()):
+        """Anchor must be {table|figure|clause}-N with the same N as the link text.
+        overridden: (text, anchor) pairs of refs.json rows with "override": true (a target the user
+        chose, e.g. a corrected number); only their number may differ, the kind must still match."""
         where_f = f"{code}/{rel}"
         pairs = [(m.group(2), m.group(1), m.start()) for m in MD_LINK_RE.finditer(text)]
         pairs += [(m.group(1), m.group(2), m.start()) for m in A_LINK_RE.finditer(text)]
@@ -163,7 +168,9 @@ class Checker:
                 continue
             m = _KEYWORD_RE.match(label)
             kind, _, ident = anchor.partition("-")
-            ok = m is not None and ident == m.group(2) and kind in ("table", "figure", "clause")
+            ident = re.sub(r"~\d+\Z", "", ident)    # same number twice in one file: table-N~2
+            same = m is not None and (ident.lower() == m.group(2).lower() or (label, anchor) in overridden)
+            ok = same and kind in ("table", "figure", "clause")
             if ok and m.group(1):
                 ok = _KIND[m.group(1).lower().rstrip("s")] == kind
             if not ok:
@@ -180,6 +187,12 @@ class Checker:
         rman = load_json(rman_path)
         lman = load_json(os.path.join(self.linked, code, "manifest.json"))
         prefix = media_prefix(self.raw, self.linked, code)
+        overridden = {}
+        rp = os.path.join(self.linked, code, "refs.json")
+        if os.path.isfile(rp):
+            for r in load_json(rp).get("refs", []):
+                if r.get("override"):
+                    overridden.setdefault(r["from_file"], set()).add((r["text"], r["anchor"]))
         for e in rman.get("clauses", []):
             rel = e.get("file")
             if not rel:
@@ -192,7 +205,7 @@ class Checker:
             info["files"] += 1
             ltext = read_bytes(lpath).decode("utf-8")
             self.check_links(code, rel, ltext)
-            self.check_semantics(code, rel, ltext)
+            self.check_semantics(code, rel, ltext, overridden.get(rel, frozenset()))
             self.check_table_links(code, rel, ltext)
             want = read_bytes(os.path.join(self.raw, code, *rel.split("/")))
             got = reverse(ltext, prefix).encode("utf-8")

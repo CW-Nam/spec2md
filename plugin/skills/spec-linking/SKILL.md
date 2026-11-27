@@ -10,11 +10,12 @@ description: "변환된 3GPP raw Markdown(raw/{spec}/)에서 표·그림·조항
 ## 실행
 
 ```
-uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md link raw -o linked
-uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md link raw -o linked --only 38213-j50   # 일부만
+uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md link raw -o linked --overrides _workspace/05_link_overrides.json
+uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md link raw -o linked --overrides _workspace/05_link_overrides.json --only 38213-j50   # 일부만
 ```
 
 - 같은 입력이면 결과가 같다(결정적). `linked/{spec}/`는 실행할 때마다 지우고 새로 쓴다.
+- `--overrides`는 사용자가 점검 HTML에서 원문을 확인하고 고른 대상(아래 "검사")이다. 파일이 없으면 무시한다. 적용하지 못한 항목(참조 위치나 대상이 없어짐)은 `warning: override not applied …`로 알린다. 이 경고가 나오면 점검 HTML에서 그 지정을 고치거나 지운다.
 - `--only`는 선택한 규격만 다시 쓴다. 선택하지 않은 규격의 "Referenced by" 절은 갱신되지 않으므로, 재변환 뒤에는 전체를 다시 실행하는 것이 기본이다.
 - 출력 형식(앵커 줄, 링크 형식, `refs.json`, `index.json`, 역참조 절, 줄바꿈 규칙)은 [출력 규약 7절](../spec-md-conversion/references/output-contract.md)을 따른다.
 
@@ -29,18 +30,25 @@ uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_SKILL_DIR}/scripts/che
 | 구분 | 내용 |
 | --- | --- |
 | ERROR | `.md` 링크와 `<a href>`의 파일이 없음(`broken link`), `#anchor`가 대상 파일에 `<a id>`로 없음(`broken anchor`) |
-| ERROR | 링크 텍스트의 번호와 앵커가 의미상 다름(`anchor mismatch`: `Table N`은 `table-N`, `Figure N`은 `figure-N`, 조항은 `clause-N`), `<table>` 안에 Markdown 링크가 남음(`markdown link inside <table>`) |
+| ERROR | 링크 텍스트의 번호와 앵커가 의미상 다름(`anchor mismatch`: `Table N`은 `table-N`, `Figure N`은 `figure-N`, 조항은 `clause-N`. 번호는 대소문자를 무시하고, 한 파일 안 같은 번호의 `~2` 꼬리는 뗀다. `refs.json`의 `"override": true` 항목은 번호가 달라도 된다), `<table>` 안에 Markdown 링크가 남음(`markdown link inside <table>`) |
 | ERROR | 사본에서 앵커 줄·생성된 링크·역참조 절·media 접두사를 되돌린 결과가 raw와 바이트 단위로 다름(`differs from raw`) |
 | ERROR | raw의 본문 파일이 linked에 없음(`missing`) |
-| WARN | 규격별 status 분포(`resolved`, `missing_target`, `missing_spec`, `ambiguous`), `missing_target` 상위 20개 `(target_spec, kind, target_id, 개수)` |
+| WARN | 규격별 status 분포(`resolved`, `missing_target`, `missing_spec`, `ambiguous`, `void`), `missing_target` 상위 20개 `(target_spec, kind, target_id, 개수)` |
 
 ERROR가 있으면 링크 도구 결함이다. 원인을 진단해 `converter-developer`에 넘기고, 검사 기준을 느슨하게 바꿔 통과시키지 않는다.
 
-검사가 끝나면 이어서 해석하지 못한 참조(`resolved`가 아닌 행) 전체를 점검용 HTML로 만든다. 첫 인자는 `raw/`와 `linked/`가 있는 저장소 루트다. 링크는 출력 HTML 기준 상대경로로 raw·linked 파일을 연다. 템플릿 `unresolved_tpl.html`이 스크립트와 같은 폴더에 있어야 한다.
+검사가 끝나면 이어서 해석하지 못한 참조(`resolved`가 아닌 행)와 사용자 지정으로 링크된 참조(`override`)를 점검용 HTML로 만든다. 첫 인자는 `raw/`와 `linked/`가 있는 저장소 루트다. 링크는 출력 HTML 기준 상대경로로 raw·linked 파일을 연다. 템플릿 `unresolved_tpl.html`이 스크립트와 같은 폴더에 있어야 한다. 셋째 인자로 지정 파일을 줄 수 있고, 기본값은 HTML과 같은 폴더의 `05_link_overrides.json`이다.
 
 ```
 uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_SKILL_DIR}/scripts/mk_unresolved.py" . _workspace/05_link_unresolved.html
 ```
+
+HTML에서 사용자는 원문을 확인한 뒤 행마다 대상을 지정한다. 방법은 셋이다.
+- 후보 버튼을 누른다. 후보는 같은 번호가 있는 로컬 규격과, 모호한 번호의 각 위치다.
+- 규격과 번호를 직접 입력한다. 그 규격에 없는 번호는 거부한다.
+- 필터한 행 전체에 같은 규격을 일괄 지정한다(예: 38.101-3 밴드 표의 `Table 5.3.5-1`). 그 규격에 같은 번호가 있는 행에만 적용된다.
+
+지정은 **지정 파일 저장**으로 `_workspace/05_link_overrides.json`에 저장하고, 위의 `link`(`--overrides`) → `check_links.py` → `mk_unresolved.py`를 다시 실행하면 반영된다. 이 파일은 사용자가 확인한 판단이다. 에이전트가 HTML 없이 임의로 만들거나 고치지 않는다.
 
 ## 해석 규칙 개선 절차
 

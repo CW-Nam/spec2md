@@ -27,11 +27,11 @@ MC_FALLBACK = "{http://schemas.openxmlformats.org/markup-compatibility/2006}Fall
 # source typo "5. 2.2.4.2.3<TAB>Title" (36.133): a space after the first dot splits the number
 SPLIT_NUM_RE = re.compile(r"^(\d+[A-Za-z]{0,2}\d*)\.\s+(\d+[A-Za-z]{0,2}\d*(?:\.\d+[A-Za-z]{0,2}\d*)+)(?=\t)")
 # "heading 3" (Word built-in) and 3GPP custom "H6" (defined with outlineLvl 9 = body text)
-HEADING_RE = re.compile(r"^(?:heading\s*|h)(\d)$", re.I)
+HEADING_RE = re.compile(r"^(?:heading\s*|header\s*|h)(\d)$", re.I)  # "Header 6": custom style in 38101-5
 # "5.3.5", "A.1.2", "Annex A (normative):", "Foreword"
 # letter-suffixed numbers too: 5.2.2.3.3a, 5.3.5.13b1, 5.8.9.1a.1.1
 # 4.3A, 9.4.1a, 5.3.5.13b1, B.2.3B.4A, F.5.F, trailing dot "6.3.3.1.", NBSP separator
-CLAUSE_RE = re.compile(r"^\s*((?:[A-Z]{1,2}|\d+[A-Za-z]{0,2}\d*)(?:\.(?:\d+[A-Za-z]{0,2}\d*|[A-Z]))*)\.?[\s ]+(.+)$")
+CLAUSE_RE = re.compile(r"^\s*((?:[A-Z]{1,2}|\d+[A-Za-z]{0,2}\d*)(?:\.(?:\d+[A-Za-z]{0,2}\d*|[A-Z]))*)\.?:?[\s ]+(.+)$")
 ANNEX_RE = re.compile(r"^\s*Annex\s+([A-Z]{1,2})\b\s*(.*)$", re.I)
 
 

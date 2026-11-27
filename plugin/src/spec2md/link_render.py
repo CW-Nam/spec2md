@@ -57,7 +57,7 @@ def render(text: str, refs: list[Ref], spec: SpecIndex, from_file: str,
     # (시작, 끝, 대체 문자열, 순서): 뒤에서부터 적용한다. 같은 위치면 링크가 앵커 줄보다 먼저.
     edits: list[tuple[int, int, str, int]] = []
     for r in refs:
-        if r.status != "resolved" or r.target is None or r.target_code is None:
+        if r.status not in ("resolved", "void") or r.target is None or r.target_code is None:
             continue
         link = href(spec.code, from_file, r.target_code, r.target)
         in_table = any(a <= r.start and r.end <= b for a, b in spans)
@@ -66,13 +66,16 @@ def render(text: str, refs: list[Ref], spec: SpecIndex, from_file: str,
 
     anchors: dict[int, set[str]] = {}
     seen: set[str] = set()
-    for store in (spec.clauses, spec.tables, spec.figures):
-        for t in store.values():
-            if t.file != from_file or not t.anchor or t.ambiguous:
-                continue
-            if not 1 <= t.line <= len(line_starts):
-                continue
-            anchors.setdefault(t.line, set()).add(t.anchor)
+    voids = {(kind, k): t for kind, v in spec.voids.items() for k, t in v.items() if t is not None}
+    for store in (spec.clauses, spec.tables, spec.figures, voids):
+        for entry in store.values():
+            # 모호한 번호는 후보마다 앵커를 단다(같은 파일의 두 번째부터는 ~2, ~3 …)
+            for t in entry.candidates or (entry,):
+                if t.file != from_file or not t.anchor:
+                    continue
+                if not 1 <= t.line <= len(line_starts):
+                    continue
+                anchors.setdefault(t.line, set()).add(t.anchor)
     for line in sorted(anchors):
         names = anchors[line]
         block = ""

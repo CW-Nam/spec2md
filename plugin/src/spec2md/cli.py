@@ -77,7 +77,7 @@ def cmd_link(a):
     from .link import run_link
     only = set(a.only.split(",")) if a.only else None
     try:
-        st = run_link(a.raw, a.out, only)
+        st = run_link(a.raw, a.out, only, a.overrides)
     except (OSError, ValueError) as e:
         log(f"ERROR: {e}")
         return 2
@@ -85,6 +85,10 @@ def cmd_link(a):
         log(f"{code}: " + ", ".join(f"{k}={v}" for k, v in counts.items()))
     log(f"link: {st.specs} spec(s), {st.files} file(s), "
         + ", ".join(f"{k}={v}" for k, v in st.refs.items()))
+    if a.overrides:
+        for w in st.warnings:
+            log(f"warning: {w}")
+        log(f"overrides: {st.overrides} applied, {len(st.warnings)} not applied")
     return 0
 
 
@@ -119,6 +123,8 @@ def main(argv=None):
     k.add_argument("raw", nargs="?", default="raw")
     k.add_argument("-o", "--out", default="linked")
     k.add_argument("--only", help="comma-separated spec codes")
+    k.add_argument("--overrides", help="user-chosen targets JSON (e.g. _workspace/05_link_overrides.json); "
+                                       "ignored if the file does not exist")
     k.set_defaults(fn=cmd_link)
 
     a = ap.parse_args(argv)

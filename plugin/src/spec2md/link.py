@@ -5,13 +5,13 @@ import json
 import os
 import shutil
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from .link_index import CorpusIndex, Target, build_corpus_index
 from .link_refs import find_refs
 from .link_render import Backlink, render
 
-STATUSES = ("resolved", "missing_target", "missing_spec", "ambiguous")
+STATUSES = ("resolved", "missing_target", "missing_spec", "ambiguous", "void")
 
 
 @dataclass
@@ -20,6 +20,59 @@ class LinkStats:
     files: int = 0
     refs: dict[str, int] = field(default_factory=dict)
     per_spec: dict[str, dict[str, int]] = field(default_factory=dict)
+    overrides: int = 0                                     # 적용한 사용자 지정 항목 수
+    warnings: list[str] = field(default_factory=list)     # 적용하지 못한 사용자 지정 항목
+
+
+_OVERRIDE_KEYS = ("spec", "file", "line", "text", "target_spec", "target_id")
+
+
+def _load_overrides(path: str | None) -> list[dict]:
+    """사용자 지정 대상 파일({"overrides": [...]}). 파일이 없으면 빈 목록."""
+    if not path or not os.path.isfile(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        items = json.load(f).get("overrides", [])
+    for n, o in enumerate(items):
+        missing = [k for k in _OVERRIDE_KEYS if k not in o]
+        if missing:
+            raise ValueError(f"{path}: override #{n + 1} lacks {', '.join(missing)}")
+    return items
+
+
+def _override_target(o: dict, kind: str, corpus: CorpusIndex) -> tuple[str | None, Target | None]:
+    code = corpus.by_number.get(o["target_spec"])
+    if code is None:
+        return None, None
+    spec = corpus.specs[code]
+    store = {"table": spec.tables, "figure": spec.figures, "clause": spec.clauses}[kind]
+    t = store.get(o["target_id"]) or spec.folded(kind).get(o["target_id"].lower())
+    if t is not None and t.ambiguous:    # 같은 번호가 여럿이면 target_file(과 target_anchor)로 고른다
+        hits = [c for c in t.candidates if c.file == o.get("target_file")
+                and o.get("target_anchor") in (None, c.anchor)]
+        t = hits[0] if len(hits) == 1 else None
+    return code, t
+
+
+def _apply_overrides(items: list[dict], refs_by: dict, corpus: CorpusIndex, stats: LinkStats) -> None:
+    """(규격, 파일, 줄, 참조 텍스트)가 같은 참조를 사용자가 지정한 대상으로 해석한다."""
+    for o in items:
+        refs = refs_by.get((o["spec"], o["file"]), [])
+        hits = [i for i, r in enumerate(refs) if r.line == o["line"] and r.text == o["text"]]
+        where = f"{o['spec']}/{o['file']}:{o['line']} {o['text']!r}"
+        if not hits:
+            stats.warnings.append(f"override not applied: no reference at {where}")
+            continue
+        kind = refs[hits[0]].kind
+        code, t = _override_target(o, kind, corpus)
+        if code is None or t is None:
+            stats.warnings.append(f"override not applied: target not found: TS {o['target_spec']} "
+                                  f"{kind} {o['target_id']} (for {where})")
+            continue
+        for i in hits:
+            refs[i] = replace(refs[i], target_spec_number=corpus.specs[code].spec_number, target_code=code,
+                              target_id=o["target_id"], status="resolved", target=t, override=True)
+        stats.overrides += 1
 
 
 def _real(p: str) -> str:
@@ -62,7 +115,9 @@ def _dump(path: str, obj) -> None:
 
 
 def _tdict(t: Target) -> dict:
-    return {"ambiguous": True} if t.ambiguous else {"file": t.file, "anchor": t.anchor}
+    if t.ambiguous:
+        return {"ambiguous": True, "candidates": [{"file": c.file, "anchor": c.anchor} for c in t.candidates]}
+    return {"file": t.file, "anchor": t.anchor}
 
 
 def _index_json(corpus: CorpusIndex) -> dict:
@@ -82,8 +137,12 @@ def _read(path: str) -> str:
         return f.read()
 
 
-def run_link(raw_root: str, out_root: str, only: set[str] | None = None) -> LinkStats:
+def run_link(raw_root: str, out_root: str, only: set[str] | None = None,
+             overrides: str | None = None) -> LinkStats:
+    """overrides: 사용자 지정 대상 파일 경로(없으면 무시)."""
     _check_roots(raw_root, out_root)
+    override_items = _load_overrides(overrides)
+    stats = LinkStats(refs={s: 0 for s in STATUSES})
     corpus = build_corpus_index(raw_root)
     if only:
         unknown = sorted(only - set(corpus.specs))
@@ -105,13 +164,14 @@ def run_link(raw_root: str, out_root: str, only: set[str] | None = None) -> Link
         for rel in spec.files:
             text = _read(os.path.join(raw_root, code, *rel.split("/")))
             texts[(code, rel)] = text
-            refs_by[(code, rel)] = find_refs(text, spec, corpus)
+            refs_by[(code, rel)] = find_refs(text, spec, corpus, rel)
+    _apply_overrides(override_items, refs_by, corpus, stats)
 
     backlinks: dict[tuple[str, str], list[Backlink]] = {}
     for (code, rel), refs in refs_by.items():
         spec = corpus.specs[code]
         for r in refs:
-            if r.status != "resolved" or r.target is None or r.target_code is None:
+            if r.status not in ("resolved", "void") or r.target is None or r.target_code is None:
                 continue
             if (r.target_code, r.target.file) == (code, rel):
                 continue
@@ -122,7 +182,6 @@ def run_link(raw_root: str, out_root: str, only: set[str] | None = None) -> Link
 
     # 2) 쓰기
     os.makedirs(out_root, exist_ok=True)
-    stats = LinkStats(refs={s: 0 for s in STATUSES})
     _dump(os.path.join(out_root, "index.json"), _index_json(corpus))
     abs_out = os.path.abspath(out_root)
     for code in selected:
@@ -147,7 +206,7 @@ def run_link(raw_root: str, out_root: str, only: set[str] | None = None) -> Link
                     "target_spec": r.target_spec_number, "target_id": r.target_id,
                     "target_file": r.target.file if r.target else None,
                     "anchor": r.target.anchor if r.target else None,
-                    "status": r.status}))
+                    "status": r.status, **({"override": True} if r.override else {})}))
         rows.sort(key=lambda x: x[:3])
         manifest = dict(manifests[code])
         manifest["link"] = {"refs": counts}

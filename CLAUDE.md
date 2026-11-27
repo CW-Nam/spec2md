@@ -25,7 +25,7 @@ uv sync --project plugin                                  # 의존성 설치 (pl
 uv run --project plugin pytest -q plugin                  # 테스트 (pytest 설정이 plugin/pyproject.toml에 있음)
 uv run --project plugin spec2md batch 3gpp-specs/ -o raw/      # 일괄 변환 (--only, --depth CODE=N, --split-depth)
 uv run --project plugin spec2md convert 3gpp-specs/X.docx -o raw/   # 분할 규격은 파트 파일을 모두 넘김
-uv run --project plugin spec2md link raw -o linked        # 참조 링크 사본
+uv run --project plugin spec2md link raw -o linked --overrides _workspace/05_link_overrides.json   # 참조 링크 사본(사용자 지정 대상 반영)
 uv run --project plugin spec2md topics raw/{spec}/        # topics/topics.json → 주제 파일
 ```
 `--project`는 작업 폴더를 바꾸지 않으므로 `3gpp-specs/`, `raw/` 같은 상대 경로는 저장소 루트 기준이다. 검사 스크립트는 각 스킬의 `scripts/`에 있고 `uv run --project plugin python plugin/skills/.../scripts/X.py`로 실행한다 (check_output.py, check_all.py, check_links.py, check_topics.py, lint_wiki.py). 스킬·에이전트 문서의 명령은 `uv run --project "${CLAUDE_PLUGIN_ROOT}" ...` 형식을 쓴다.
@@ -44,3 +44,4 @@ uv run --project plugin spec2md topics raw/{spec}/        # topics/topics.json �
 | 2026-11-26 | uv로 의존성·실행 관리(uv.lock, `dev` 그룹, 스킬 명령 `uv run --project`), 훅은 uv 설치 확인, v0.4.0 | plugin/pyproject.toml, plugin/uv.lock, plugin/hooks/, 스킬·에이전트, README.md | 시스템 Python에 의존성이 없어도 스킬이 실행되게 |
 | 2026-11-26 | 원본 규격 폴더 `specs/` → `3gpp-specs/` 이름 변경 (check_all.py `--specs` 기본값 포함), v0.4.1 | .gitignore, 문서·스킬·check_all.py | 폴더 용도를 이름에서 분명히 |
 | 2026-11-27 | 기능 영역 분류(`feature-taxonomy.md`, 이전 nr-3gpp-wiki의 W01~W23-35) 추가, 규격 간 같은 개념에 같은 주제 id를 쓰는 원칙 | plugin/skills/topic-grouping/ | 규격마다 주제 id가 달라 위키 feature 페이지로 모으기 어려움 |
+| 2026-11-27 | 링크 해석 보강(캡션 표기 변형·NBSP·제목 캡션, 대소문자만 다른 번호, 본문 없는 조항의 글자 접미 조항, TS 없는·붙여 쓴 규격 지시, 문맥으로 모호 해소와 `~n` 앵커), `void` 상태, `--overrides` 사용자 지정 대상과 점검 HTML 수정 기능, 제목 규칙(`A.1:` 콜론, `Header N` 스타일), check_all이 inspect_docx.py 변경 시 구조 분석 갱신 | link_*.py, check_links.py, mk_unresolved.py, unresolved_tpl.html, headings.py, inspect_docx.py, check_all.py, output-contract.md, 스킬 문서 | Codex 원문 대조(`_workspace/05_link_unresolved_docx_review.html`) 결과 |

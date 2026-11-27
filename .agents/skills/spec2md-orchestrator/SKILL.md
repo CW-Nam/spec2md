@@ -41,12 +41,12 @@ uv run --project plugin python plugin/skills/spec2md-orchestrator/scripts/check_
 링크 생성·갱신이 요청 범위에 있으면 검증된 `raw/`를 사용한다. 링크 CLI는 입력 코퍼스의 manifest를 모두 읽으므로, 실패한 변환의 잔여 출력이 있으면 먼저 해결하거나 검증된 입력을 별도 경로에 모아 처리한다. 재변환 뒤 링크를 갱신할 때는 규격 간 역참조도 갱신되도록 전체 코퍼스를 다시 링크한다. `linked/`는 CLI로 재생성한다.
 
 ```text
-uv run --project plugin spec2md link raw -o linked
+uv run --project plugin spec2md link raw -o linked --overrides _workspace/05_link_overrides.json
 uv run --project plugin python plugin/skills/spec-linking/scripts/check_links.py linked --raw raw --json _workspace/05_link_check.json
 uv run --project plugin python plugin/skills/spec-linking/scripts/mk_unresolved.py . _workspace/05_link_unresolved.html
 ```
 
-링크 검사가 끝나면 마지막 명령으로 미해결 참조 점검용 HTML을 만든다(템플릿 `unresolved_tpl.html`이 스크립트와 같은 폴더에 있어야 한다). 링크 검사에서 `ERROR`가 나오면 생성 결과와 원문을 대조해 원인을 찾는다. 미해결 참조는 [링크 규칙](../../../plugin/skills/spec-linking/SKILL.md)에 따라 원문 근거와 함께 보고하고, 점검용 HTML 경로를 함께 알린다.
+링크 검사가 끝나면 마지막 명령으로 미해결 참조 점검·수정용 HTML을 만든다(템플릿 `unresolved_tpl.html`이 스크립트와 같은 폴더에 있어야 한다). 사용자가 HTML에서 원문을 확인하고 대상을 지정해 `_workspace/05_link_overrides.json`으로 저장하면, 세 명령을 다시 실행할 때 `--overrides`로 반영된다. 이 파일은 사용자가 확인한 판단이므로 임의로 만들거나 고치지 않는다. 링크 검사에서 `ERROR`가 나오면 생성 결과와 원문을 대조해 원인을 찾는다. 미해결 참조는 [링크 규칙](../../../plugin/skills/spec-linking/SKILL.md)에 따라 원문 근거와 함께 보고하고, 점검용 HTML 경로를 함께 알린다.
 
 ## 주제별 묶음
 

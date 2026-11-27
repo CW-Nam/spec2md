@@ -8,7 +8,7 @@ Spec code = docx stem, minus a multi-part suffix (output-contract.md section 1):
   36101-j60_s00-07.docx -> 36101-j60. All parts of one code are inspected together.
 
 For each spec code:
-  1. _workspace/01_inspect_{code}.json  (created if missing or older than any part)
+  1. _workspace/01_inspect_{code}.json  (created if missing or older than any part or inspect_docx.py)
   2. check_output.py --out raw/{code} --json _workspace/{phase}_checker_{code}.json
 Writes _workspace/{phase}_check_summary.json and prints a table.
 Exit 0 if all PASS, 1 if any FAIL/missing output.
@@ -61,7 +61,7 @@ def main():
         ij = os.path.join(a.ws, f"01_inspect_{code}.json")
         row = {"spec": code, "parts": len(parts), "status": None, "errors": None, "warnings": None,
                "report": None}
-        if not os.path.exists(ij) or os.path.getmtime(ij) < max(os.path.getmtime(d) for d in parts):
+        if not os.path.exists(ij) or os.path.getmtime(ij) < max(os.path.getmtime(d) for d in [*parts, INSPECT]):
             r = subprocess.run([sys.executable, INSPECT, *parts, "--json", ij], capture_output=True, text=True, encoding="utf-8", errors="replace",
                            env={**os.environ, "PYTHONIOENCODING": "utf-8"})
             if r.returncode != 0:

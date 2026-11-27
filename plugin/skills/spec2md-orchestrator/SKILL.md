@@ -108,20 +108,20 @@ description: "3GPP 규격 .docx를 LLM 위키용 조항·주제별 Markdown raw 
 
 3단계에서 PASS한 규격을 대상으로 한다. 재변환했다면 항상 전체를 다시 링크한다(역참조 절이 규격 사이에 걸쳐 있다).
 
-1. 링크를 만든다.
+1. 링크를 만든다. `--overrides`는 사용자가 점검 HTML에서 고른 대상이다(파일이 없으면 무시).
    ```
-   uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md link raw -o linked
+   uv run --project "${CLAUDE_PLUGIN_ROOT}" spec2md link raw -o linked --overrides _workspace/05_link_overrides.json
    ```
 2. 독립 검사기로 확인한다.
    ```
    uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_PLUGIN_ROOT}/skills/spec-linking/scripts/check_links.py" linked --raw raw --json _workspace/05_link_check.json
    ```
-3. 검사가 끝나면 해석하지 못한 참조의 점검용 HTML을 만든다.
+3. 검사가 끝나면 해석하지 못한 참조의 점검·수정용 HTML을 만든다.
    ```
    uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_PLUGIN_ROOT}/skills/spec-linking/scripts/mk_unresolved.py" . _workspace/05_link_unresolved.html
    ```
 4. ERROR(검사 종료 코드 1)가 있으면 `subagent_type: "spec2md:converter-developer"`에 `_workspace/05_link_check.json`의 `errors`와 원인 진단을 맡긴다. 도구를 고친 뒤 1~3을 다시 실행한다. 검사기를 느슨하게 바꿔 통과시키지 않는다.
-5. WARN(`missing_target` 상위)은 `spec-linking` 스킬의 개선 절차에 따라 보고에 요약하고, 점검용 HTML 경로를 함께 알린다. 사용자가 요청할 때만 규칙 개선을 진행한다.
+5. WARN(`missing_target` 상위)은 `spec-linking` 스킬의 개선 절차에 따라 보고에 요약하고, 점검용 HTML 경로를 함께 알린다. 사용자가 요청할 때만 규칙 개선을 진행한다. 원문을 확인해 사용자가 직접 고를 수 있는 대상(다른 파트의 표, 번호 오타 등)은 HTML에서 지정해 저장하면 1~3을 다시 실행할 때 반영된다고 안내한다. `warning: override not applied`가 나오면 함께 알린다.
 
 ### 4단계: 주제 묶음(선택)
 

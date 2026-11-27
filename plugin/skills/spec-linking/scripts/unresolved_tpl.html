@@ -6,34 +6,48 @@
 <title>spec2md 링크 점검: 해석하지 못한 참조</title>
 <style>
 :root{--bg:#fafaf9;--fg:#1c1917;--mute:#78716c;--line:#e7e5e4;--card:#fff;--hl:#fde68a;
- --mt:#b45309;--mt-bg:#fef3c7;--ms:#1d4ed8;--ms-bg:#dbeafe;--am:#7e22ce;--am-bg:#f3e8ff;--link:#0f62fe}
+ --mt:#b45309;--mt-bg:#fef3c7;--ms:#1d4ed8;--ms-bg:#dbeafe;--am:#7e22ce;--am-bg:#f3e8ff;
+ --vd:#57534e;--vd-bg:#e7e5e4;--ov:#15803d;--ov-bg:#dcfce7;--err:#b91c1c;--link:#0f62fe}
 @media (prefers-color-scheme:dark){:root{--bg:#1c1917;--fg:#f5f5f4;--mute:#a8a29e;--line:#44403c;--card:#292524;--hl:#854d0e;
- --mt:#fbbf24;--mt-bg:#451a03;--ms:#93c5fd;--ms-bg:#172554;--am:#d8b4fe;--am-bg:#3b0764;--link:#78a9ff}}
+ --mt:#fbbf24;--mt-bg:#451a03;--ms:#93c5fd;--ms-bg:#172554;--am:#d8b4fe;--am-bg:#3b0764;
+ --vd:#d6d3d1;--vd-bg:#44403c;--ov:#86efac;--ov-bg:#14532d;--err:#fca5a5;--link:#78a9ff}}
 *{box-sizing:border-box}
 body{margin:0;font:14px/1.5 system-ui,"Segoe UI","Malgun Gothic",sans-serif;background:var(--bg);color:var(--fg)}
 header{padding:20px 24px 8px}
 h1{font-size:20px;margin:0 0 4px}
 .sub{color:var(--mute);margin:0}
+code{font:12.5px ui-monospace,Consolas,monospace}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px}
-.chip{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 12px;cursor:pointer;text-align:left;color:inherit;font:inherit;min-width:150px}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 12px;cursor:pointer;text-align:left;color:inherit;font:inherit;min-width:140px}
 .chip b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
 .chip small{color:var(--mute)}
 .chip[aria-pressed=false]{opacity:.45}
 .legend{color:var(--mute);font-size:12.5px;margin:6px 0 0}
-.legend>span{margin-right:14px}
+.legend>span{margin-right:14px;display:inline-block}
+.save{margin:12px 0 0;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:10px 14px}
+.save .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.save .msg{color:var(--mute)}
+.save pre{margin:8px 0 0;font:12px/1.5 ui-monospace,Consolas,monospace;white-space:pre-wrap;color:var(--mute)}
+.save details{margin-top:6px}
+button.act{font:inherit;padding:5px 12px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:inherit;cursor:pointer}
+button.act.primary{background:var(--link);border-color:var(--link);color:#fff}
+button.act:disabled{opacity:.45;cursor:default}
 .bar{position:sticky;top:0;z-index:2;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 24px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.bar select,.bar input{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:inherit}
-.bar input{min-width:260px;flex:1;max-width:420px}
+.bar select,.bar input,.fix select,.fix input{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:inherit}
+.bar input[type=search]{min-width:240px;flex:1;max-width:380px}
+.bulk{display:flex;gap:6px;align-items:center;border-left:1px solid var(--line);padding-left:10px}
 .count{color:var(--mute);margin-left:auto;font-variant-numeric:tabular-nums}
 main{padding:0 24px 40px}
 table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:8px}
 th,td{border-bottom:1px solid var(--line);padding:8px 6px;vertical-align:top;text-align:left}
 th{font-size:12px;color:var(--mute);font-weight:600}
-col.c1{width:118px}col.c2{width:230px}col.c3{width:220px}
+col.c1{width:118px}col.c2{width:210px}col.c3{width:210px}col.c5{width:280px}
 .st{display:inline-block;font-size:12px;padding:1px 7px;border-radius:10px;font-weight:600}
 .st.missing_target{color:var(--mt);background:var(--mt-bg)}
 .st.missing_spec{color:var(--ms);background:var(--ms-bg)}
 .st.ambiguous{color:var(--am);background:var(--am-bg)}
+.st.void{color:var(--vd);background:var(--vd-bg)}
+.st.override{color:var(--ov);background:var(--ov-bg)}
 .ref{font-weight:600}
 .tgt{color:var(--mute);font-size:12.5px}
 .loc{font-size:12.5px;word-break:break-all}
@@ -43,6 +57,17 @@ a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 .body{font:12.5px/1.55 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-word}
 .body mark{background:var(--hl);color:inherit;border-radius:2px;padding:0 1px}
 .more{font:12px system-ui,sans-serif;color:var(--link);cursor:pointer;background:none;border:0;padding:0;margin-left:4px}
+.fix{font-size:12.5px}
+.fix .cands{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
+.fix button{font:12px system-ui,sans-serif;padding:2px 8px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:inherit;cursor:pointer}
+.fix button:hover{border-color:var(--link)}
+.fix .chosen{color:var(--ov);font-weight:600}
+.fix .state{color:var(--mute)}
+.fix .state.bad{color:var(--err)}
+.fix .manual{display:flex;gap:4px;margin-top:4px}
+.fix .manual input{width:110px}
+.fix .manual select{max-width:120px}
+.fix .err{color:var(--err);margin-top:2px}
 .pager{display:flex;gap:8px;justify-content:center;align-items:center;margin:16px 0}
 .pager button{font:inherit;padding:5px 12px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:inherit;cursor:pointer}
 .pager button:disabled{opacity:.4;cursor:default}
@@ -52,39 +77,101 @@ a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 <body>
 <header>
 <h1>해석하지 못한 참조 점검</h1>
-<p class="sub">linked/*/refs.json에서 <code>resolved</code>가 아닌 참조입니다. 위치 링크를 누르면 VS Code에서 해당 줄이 열립니다(<code>raw</code>는 원문, <code>linked</code>는 링크 사본).</p>
+<p class="sub">linked/*/refs.json에서 <code>resolved</code>가 아닌 참조와, 사용자가 대상을 지정한 참조입니다. 위치 링크는 raw(원문)와 linked(링크 사본) 파일을 엽니다.</p>
 <div class="chips" id="chips"></div>
 <p class="legend">
 <span><span class="st missing_target">missing_target</span> 대상 규격은 있으나 그 번호가 색인에 없음</span>
 <span><span class="st missing_spec">missing_spec</span> 대상 규격이 코퍼스에 없거나 정할 수 없음</span>
 <span><span class="st ambiguous">ambiguous</span> 같은 번호의 대상이 여러 개</span>
+<span><span class="st void">void</span> 대상이 Void로 비어 있음</span>
+<span><span class="st override">override</span> 사용자가 지정한 대상으로 링크됨</span>
 </p>
+<div class="save">
+<div class="row">
+<b>대상 지정</b><span class="msg" id="smsg"></span>
+<button class="act primary" id="bsave">지정 파일 저장</button>
+<button class="act" id="bcopy">JSON 복사</button>
+<button class="act" id="bundo">저장 안 된 변경 취소</button>
+</div>
+<details><summary>사용 방법</summary>
+<p class="msg">원문을 확인한 뒤 오른쪽 열에서 후보 대상을 누르거나 규격·번호를 직접 지정합니다. 위쪽 막대의 일괄 지정은 지금 보이는(필터된) 행 전체에 같은 규격을 지정하며, 그 규격에 같은 번호가 있는 행에만 적용됩니다.
+변경은 이 브라우저에 임시 보관되고, <b>지정 파일 저장</b>으로 <code id="ovfile"></code>에 저장해야 반영됩니다(저장 창이 없으면 내려받은 파일을 그 경로로 옮깁니다). 저장한 뒤 저장소 루트에서 다음을 실행합니다.</p>
+<pre id="cmds"></pre>
+</details>
+<details id="stalebox" hidden><summary id="stalesum"></summary><div id="stale"></div></details>
+</div>
 </header>
 <div class="bar">
 <select id="fspec"><option value="">출발 규격: 전체</option></select>
 <select id="ftspec"><option value="">대상 규격: 전체</option></select>
 <select id="fkind"><option value="">종류: 전체</option><option>clause</option><option>table</option><option>figure</option></select>
 <input id="q" type="search" placeholder="참조 텍스트·대상 번호·파일·본문 검색">
+<span class="bulk"><select id="bspec"><option value="">일괄 지정 규격</option></select><button class="act" id="bapply">보이는 행에 적용</button></span>
 <span class="count" id="count"></span>
 </div>
 <main>
 <table>
-<colgroup><col class="c1"><col class="c2"><col class="c3"><col></colgroup>
-<thead><tr><th>상태</th><th>참조 → 대상</th><th>위치</th><th>본문 줄</th></tr></thead>
+<colgroup><col class="c1"><col class="c2"><col class="c3"><col><col class="c5"></colgroup>
+<thead><tr><th>상태</th><th>참조 → 대상</th><th>위치</th><th>본문 줄</th><th>대상 지정</th></tr></thead>
 <tbody id="rows"></tbody>
 </table>
 <div class="pager"><button id="prev">이전</button><span id="page"></span><button id="next">다음</button></div>
 </main>
 <script>
-const DATA = /*DATA*/[];
-const STATUSES = ["missing_target", "missing_spec", "ambiguous"];
-const PAGE = 200, WIN = 180;
+const D = /*DATA*/{};
+const DATA = D.rows;
+const STATUSES = ["missing_target", "missing_spec", "ambiguous", "void", "override"];
+const STATE = {applied: "적용됨", target_missing: "대상 없음(적용 안 됨)", stale: "참조 위치 없음", pending: "저장됨, link 재실행 필요", unsaved: "저장 안 됨"};
+const PAGE = 200, WIN = 180, STORE_KEY = "spec2md-link-overrides:" + D.ovfile;
 const on = new Set(STATUSES);
 let page = 0, view = [];
 const $ = id => document.getElementById(id);
 const ESC = {"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;"};
 const esc = s => String(s).replace(/[&<>"]/g, c => ESC[c]);
 const mark = (s, t) => esc(s).split(esc(t)).join("<mark>" + esc(t) + "</mark>");
+const keyOf = o => [o.spec, o.file, o.line, o.text].join("\u0001");
+const SPECS = Object.keys(D.keys).sort();
+
+// 파일에 있던 지정(saved)과 이 페이지에서 바꾼 것(edits: key -> 지정 또는 null=취소)
+const saved = new Map(D.overrides.map(o => [keyOf(o), o]));
+const edits = new Map();
+try { for (const [k, v] of JSON.parse(localStorage.getItem(STORE_KEY) || "[]")) edits.set(k, v); } catch (e) {}
+const cur = k => edits.has(k) ? edits.get(k) : (saved.get(k) || null);
+const persist = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify([...edits])); } catch (e) {} };
+
+// 규격별 번호 목록: 번호 -> {id, amb}. "*" 접두사는 같은 번호가 여러 곳에 있는 모호한 번호
+const KEYS = {};
+function lookup(sn, kind, id) {
+  const sk = sn + "|" + kind;
+  if (!KEYS[sk]) {
+    const m = new Map();
+    for (const x of ((D.keys[sn] || {})[kind[0]] || "").split("\n")) {
+      if (!x) continue;
+      const amb = x[0] === "*", k = amb ? x.slice(1) : x, low = k.toLowerCase();
+      // 대소문자만 다른 번호가 여럿이면 정확히 같은 번호만 쓴다(링크 도구와 같은 규칙)
+      m.set(low, m.has(low) ? null : {id: k, amb});
+      m.set("=" + k, {id: k, amb});
+    }
+    KEYS[sk] = m;
+  }
+  const v = String(id).trim();
+  return KEYS[sk].get("=" + v) || KEYS[sk].get(v.toLowerCase()) || null;
+}
+
+function base(r) { return {spec: r.c, file: r.f, line: r.l, text: r.t, kind: r.k}; }
+function setOv(r, o) {
+  const k = keyOf(base(r));
+  const same = saved.get(k);
+  if (o === null ? !same : same && JSON.stringify(strip(same)) === JSON.stringify(strip(o))) edits.delete(k);
+  else edits.set(k, o);
+  persist();
+}
+function strip(o) { const c = {...o}; delete c.state; return c; }
+function stateOf(k) {
+  if (edits.has(k)) return "unsaved";
+  const o = saved.get(k);
+  return o ? o.state : null;
+}
 
 function chips() {
   const n = {};
@@ -105,6 +192,13 @@ function options() {
   const t = [...new Set(DATA.map(r => r.ts))].sort();
   $("ftspec").insertAdjacentHTML("beforeend",
     t.map(s => `<option value="${s || "-"}">${s ? "TS " + s : "(정할 수 없음)"}</option>`).join(""));
+  $("bspec").insertAdjacentHTML("beforeend", SPECS.map(s => `<option value="${s}">TS ${s}</option>`).join(""));
+  $("ovfile").textContent = D.ovfile;
+  $("cmds").textContent = [
+    `uv run --project plugin spec2md link raw -o linked --overrides ${D.ovfile}`,
+    "uv run --project plugin python plugin/skills/spec-linking/scripts/check_links.py linked --raw raw --json _workspace/05_link_check.json",
+    `uv run --project plugin python plugin/skills/spec-linking/scripts/mk_unresolved.py . ${D.ovfile.replace(/[^/]*$/, "05_link_unresolved.html")}`,
+  ].join("\n");
 }
 function snippet(body, text) {
   if (body.length <= WIN * 2 + text.length) return mark(body, text);
@@ -113,11 +207,31 @@ function snippet(body, text) {
   return (a > 0 ? "…" : "") + mark(body.slice(a, b), text) + (b < body.length ? "…" : "") +
     `<button class="more" data-full>전체 줄 (${body.length.toLocaleString()}자)</button>`;
 }
+function fixCell(r, i) {
+  const k = keyOf(base(r)), o = cur(k), st = stateOf(k);
+  if (o) {
+    const where = o.target_file ? ` <span class="state">(${esc(o.target_file.replace(/^clauses\//, ""))})</span>` : "";
+    return `<div class="chosen">→ TS ${esc(o.target_spec)} ${esc(o.target_id)}${where}</div>
+      <div class="state ${st === "target_missing" || st === "stale" ? "bad" : ""}">${STATE[st] || ""}</div>
+      <button data-undo="${i}">지정 취소</button>`;
+  }
+  if (st === "unsaved" && saved.has(k)) {
+    return `<div class="state">지정 취소됨(저장 안 됨)</div><button data-revert="${i}">되돌리기</button>`;
+  }
+  const cands = r.cand.map((c, j) => `<button data-c="${i}:${j}" title="${esc(c[2] || "")}">TS ${esc(c[0])} ${esc(c[1])}${c[2] ? " · " + esc(c[2].replace(/^clauses\/(\d+)_.*/, "$1")) : ""}</button>`).join("");
+  return `<div class="cands">${cands}</div>
+    <div class="manual"><select data-ms="${i}">${SPECS.map(s => `<option${s === r.ts ? " selected" : ""}>${s}</option>`).join("")}</select>
+    <input data-mi="${i}" value="${esc(r.ti)}" aria-label="대상 번호"><button data-m="${i}">지정</button></div>
+    <div class="err" data-me="${i}"></div>`;
+}
+// 원문에는 NBSP(table 10.5…)가 흔해 검색은 공백을 하나로 맞추고 대소문자를 무시한다
+const norm = s => s.replace(/\s+/g, " ").toLowerCase();
+const hay = r => r.h || (r.h = norm([r.t, r.ti, r.f, r.cl, r.b].join(" ")));
 function apply() {
   const fs = $("fspec").value, ft = $("ftspec").value, fk = $("fkind").value;
-  const q = $("q").value.trim().toLowerCase();
+  const q = norm($("q").value.trim());
   view = DATA.filter(r => on.has(r.s) && (!fs || r.c === fs) && (!ft || (r.ts || "-") === ft) &&
-    (!fk || r.k === fk) && (!q || (r.t + " " + r.ti + " " + r.f + " " + r.cl + " " + r.b).toLowerCase().includes(q)));
+    (!fk || r.k === fk) && (!q || hay(r).includes(q)));
   const pages = Math.max(1, Math.ceil(view.length / PAGE));
   page = Math.min(page, pages - 1);
   $("count").textContent = `${view.length.toLocaleString()} / ${DATA.length.toLocaleString()}건`;
@@ -125,19 +239,101 @@ function apply() {
   $("prev").disabled = page === 0;
   $("next").disabled = page >= pages - 1;
   const slice = view.slice(page * PAGE, page * PAGE + PAGE);
-  $("rows").innerHTML = slice.length ? slice.map((r, j) => `<tr>
+  $("rows").innerHTML = slice.length ? slice.map((r, j) => {
+    const i = page * PAGE + j;
+    return `<tr>
     <td><span class="st ${r.s}">${r.s}</span></td>
     <td><div class="ref">${esc(r.t)}</div><div class="tgt">→ ${r.ts ? "TS " + esc(r.ts) : "(규격 불명)"} · ${r.k} ${esc(r.ti)}</div></td>
     <td class="loc"><div>TS ${esc(r.n)} §${esc(r.cl)}</div><div class="file">${esc(r.c)}/${esc(r.f)}</div>
       <div class="links"><a href="${esc(r.ur)}">raw:${r.l}</a><a href="${esc(r.ul)}">linked:${r.ll}</a></div></td>
-    <td class="body" data-i="${page * PAGE + j}">${snippet(r.b, r.t)}</td></tr>`).join("")
-    : `<tr><td colspan="4" class="empty">조건에 맞는 참조가 없습니다.</td></tr>`;
+    <td class="body" data-i="${i}">${snippet(r.b, r.t)}</td>
+    <td class="fix">${fixCell(r, i)}</td></tr>`;
+  }).join("") : `<tr><td colspan="5" class="empty">조건에 맞는 참조가 없습니다.</td></tr>`;
+  status();
 }
-$("rows").addEventListener("click", e => {
-  if (!e.target.matches("[data-full]")) return;
-  const td = e.target.closest("td"), r = view[+td.dataset.i];
-  td.innerHTML = mark(r.b, r.t);
+function finalList() {
+  const keys = new Set([...saved.keys(), ...edits.keys()]);
+  const out = [];
+  for (const k of keys) { const o = cur(k); if (o) out.push(strip(o)); }
+  out.sort((a, b) => a.spec.localeCompare(b.spec) || a.file.localeCompare(b.file) || a.line - b.line || a.text.localeCompare(b.text));
+  return out;
+}
+function status() {
+  const n = finalList().length;
+  $("smsg").textContent = `지정 ${n.toLocaleString()}건` + (edits.size ? ` · 저장 안 된 변경 ${edits.size.toLocaleString()}건` : " · 모두 저장됨");
+  $("bundo").disabled = !edits.size;
+  const stale = [...saved.values()].filter(o => o.state === "stale" && !edits.has(keyOf(o)));
+  $("stalebox").hidden = !stale.length;
+  $("stalesum").textContent = `참조 위치를 찾지 못한 지정 ${stale.length}건 (raw가 바뀌었을 수 있음)`;
+  $("stale").innerHTML = stale.map((o, j) => `<div class="fix">${esc(o.spec)}/${esc(o.file)}:${o.line} ${esc(o.text)} → TS ${esc(o.target_spec)} ${esc(o.target_id)} <button data-sx="${esc(keyOf(o))}">지정 삭제</button></div>`).join("");
+}
+function say(i, msg) { const e = document.querySelector(`[data-me="${i}"]`); if (e) e.textContent = msg; }
+
+document.addEventListener("click", e => {
+  const t = e.target;
+  if (t.matches("[data-full]")) {
+    const td = t.closest("td"), r = view[+td.dataset.i];
+    td.innerHTML = mark(r.b, r.t);
+    return;
+  }
+  if (t.dataset.c) {
+    const [i, j] = t.dataset.c.split(":").map(Number), r = view[i], c = r.cand[j];
+    const o = {...base(r), target_spec: c[0], target_id: c[1]};
+    if (c[2]) { o.target_file = c[2]; o.target_anchor = c[3]; }
+    setOv(r, o); apply();
+  } else if (t.dataset.m) {
+    const i = +t.dataset.m, r = view[i];
+    const sn = document.querySelector(`[data-ms="${i}"]`).value;
+    const hit = lookup(sn, r.k, document.querySelector(`[data-mi="${i}"]`).value);
+    if (!hit) return say(i, `TS ${sn}에 그 ${r.k} 번호가 없습니다.`);
+    if (hit.amb) return say(i, `TS ${sn}에 ${hit.id}가 여러 곳 있습니다. 후보 버튼으로 위치를 고르세요.`);
+    setOv(r, {...base(r), target_spec: sn, target_id: hit.id}); apply();
+  } else if (t.dataset.undo) {
+    setOv(view[+t.dataset.undo], null); apply();
+  } else if (t.dataset.revert) {
+    edits.delete(keyOf(base(view[+t.dataset.revert]))); persist(); apply();
+  } else if (t.dataset.sx) {
+    edits.set(t.dataset.sx, null); persist(); apply();
+  }
 });
+$("bapply").onclick = () => {
+  const sn = $("bspec").value;
+  if (!sn) return alertMsg("일괄 지정할 규격을 고르세요.");
+  let n = 0, skip = 0;
+  for (const r of view) {
+    if (r.s === "override" || cur(keyOf(base(r)))) continue;
+    const hit = lookup(sn, r.k, r.ti);
+    if (!hit || hit.amb) { skip++; continue; }
+    setOv(r, {...base(r), target_spec: sn, target_id: hit.id}); n++;
+  }
+  alertMsg(`TS ${sn}: ${n.toLocaleString()}건 지정, ${skip.toLocaleString()}건은 그 규격에 같은 번호가 없거나 모호해 건너뜀`);
+  apply();
+};
+function alertMsg(s) { $("smsg").textContent = s; setTimeout(status, 4000); }
+async function save() {
+  const txt = JSON.stringify({overrides: finalList()}, null, 1) + "\n";
+  if (window.showSaveFilePicker) {
+    try {
+      const h = await showSaveFilePicker({suggestedName: "05_link_overrides.json",
+        types: [{description: "JSON", accept: {"application/json": [".json"]}}]});
+      const w = await h.createWritable(); await w.write(txt); await w.close();
+      return saved_();
+    } catch (e) { if (e.name === "AbortError") return; }
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([txt], {type: "application/json"}));
+  a.download = "05_link_overrides.json"; a.click();
+  saved_();
+}
+function saved_() {
+  for (const [k, o] of edits) o ? saved.set(k, {...o, state: "pending"}) : saved.delete(k);
+  edits.clear(); persist(); apply();
+}
+$("bsave").onclick = save;
+$("bcopy").onclick = () => navigator.clipboard.writeText(JSON.stringify({overrides: finalList()}, null, 1) + "\n")
+  .then(() => alertMsg("JSON을 클립보드에 복사했습니다."), () => alertMsg("복사하지 못했습니다."));
+$("bundo").onclick = () => { edits.clear(); persist(); apply(); };
+addEventListener("beforeunload", e => { if (edits.size) { e.preventDefault(); e.returnValue = ""; } });
 ["fspec", "ftspec", "fkind"].forEach(id => $(id).onchange = () => { page = 0; apply(); });
 $("q").oninput = () => { page = 0; apply(); };
 $("prev").onclick = () => { page--; apply(); scrollTo(0, 0); };

@@ -5,7 +5,7 @@ import bisect
 import re
 from dataclasses import dataclass
 
-from .link_index import PLAIN_CAPTION_RE, CorpusIndex, SpecIndex, Target
+from .link_index import CorpusIndex, SpecIndex, Target, caption_at, line_sections
 
 # 번호 모양. 각 부분이 점으로 시작하므로 나누는 방법이 하나뿐이라 되돌아가기가 폭주하지 않는다.
 _HEAD_SEG = r"(?:\d+[A-Za-z]?|[A-Z])"
@@ -31,15 +31,25 @@ _ANNEX_LIST_NUM_RE = re.compile(rf"(?:{_CLAUSE_NUM}|[A-Z]\d+(?:\.[0-9A-Za-z]+)+)
 # 규격 지시: [3GPP ]TS|TR nn.nnn[ [n]], [n], [n, TS nn.nnn], [n. TS nn.nnn], [n TS nn.nnn],
 # [n, nn.nnn], [TS nn.nnn], [nn.nnn]
 _DESIG = (
-    rf"(?:(?<![A-Za-z])(?:3GPP{_SP})?T[SR]{_SP0}(?P<ts>{_TSPEC})(?:{_SP0}\[(?P<tn>\d+)\])?"
+    rf"(?:(?:(?<![A-Za-z])|(?<=\bof))(?:3GPP{_SP})?T[SR]{_SP0}(?P<ts>{_TSPEC})(?:{_SP0}\[(?P<tn>\d+)\])?"
     rf"|\[(?P<bn>\d+)\]"
     rf"|\[(?:(?P<bn2>\d+)[.,]?{_SP0})?(?:(?:3GPP{_SP})?T[SR]{_SP0})?(?P<bts>{_SPEC})\]"
     rf"|(?P<own>(?:present|this){_SP}(?:document|specification))\b)"
 )
+# "of"와 TS를 붙여 쓰기도 한다("clause 5.1.1.2 ofTS 36.213 [2]").
 _OF = (rf"{_SP}(?:(?:as{_SP})?(?:defined|specified|described|given){_SP})?"
-       rf"(?:of|in|from){_SP}(?:the{_SP})?")
-# 뒤쪽 지시: "of|in|from …", "defined in …", 또는 번호 바로 뒤의 대괄호("clause 5.4.2.1 [5, TS 38.212]")
-_TRAIL_RE = re.compile(rf"(?:{_OF}|{_SP0}(?=\[)){_DESIG}")
+       rf"(?:of|in|from)(?:{_SP}(?:the{_SP})?|(?=T[SR]{_SP0}\d))")
+_TS_AHEAD = rf"(?:3GPP{_SP})?T[SR]{_SP0}{_TSPEC}"
+# 뒤쪽 지시에서만 TS 없는 규격 번호도 받는다("table 6.3.5.2.1-1 of 36.101[5]", "of 38.101-1 [2]").
+# 3GPP 규격 번호 계열(2x~5x)만 받아 "of 10.000 MHz" 같은 값과 섞이지 않게 한다.
+_TRAIL_DESIG = (_DESIG[:-1]
+                + rf"|(?P<bare>[2-5]\d\.\d{{3}}(?:-\d+)?)(?![\d.])(?:{_SP0}\[(?P<bare_n>\d+)\])?)")
+# 뒤쪽 지시: "of|in|from …", "defined in …", 번호 바로 뒤의 대괄호("clause 5.4.2.1 [5, TS 38.212]"),
+# 공백만 두고 바로 붙은 TS("clause 10.2.6 TS 36.211 [16]"), 괄호를 닫는 쉼표 뒤 TS("(clause 4.2.7.9, TS 38.306 [22])").
+# 쉼표 뒤 TS가 괄호로 닫히지 않으면 다음 참조의 앞쪽 지시일 수 있어 쓰지 않는다("clause 5.5, TS 25.104 [6] clause 5.2").
+_TRAIL_RE = re.compile(
+    rf"(?:{_OF}|{_SP0}(?=\[)|{_SP}(?={_TS_AHEAD})"
+    rf"|{_SP0},{_SP}(?={_TS_AHEAD}(?:{_SP0}\[\d+\])?{_SP0}\))){_TRAIL_DESIG}")
 # 다른 문서를 가리키는 듯하지만 3GPP 규격 지시로 읽히지 않는 꼬리(IETF RFC, IEEE Std, TS 오타 …).
 # 이때는 현재 규격 안에서 해석하지 않는다(틀린 링크 금지).
 # 번호가 바로 붙을 수 있다(RFC3550, IEEE802.11). ETR/ETS만 낱말 끝을 확인한다.
@@ -72,6 +82,7 @@ class Ref:
     target_code: str | None
     status: str
     target: Target | None
+    override: bool = False    # 사용자가 지정한 대상(--overrides)으로 해석했다
 
 
 def _merge(spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
@@ -117,7 +128,7 @@ def protected_spans(text: str) -> list[tuple[int, int]]:
             continue
         if _FENCE_RE.match(ln):
             fence_start = offsets[i]
-        elif ln.startswith(("#", "**Table ", "*Figure ")) or PLAIN_CAPTION_RE.match(ln):
+        elif ln.startswith(("#", "**Table ", "*Figure ")) or caption_at(lines, i):
             line_spans.append((offsets[i], line_end(i)))
     if fence_start is not None:
         line_spans.append((fence_start, len(text)))
@@ -191,14 +202,23 @@ def _bracket(text: str, lo: int, start: int, end: int) -> re.Match | None:
 def _desig_spec(m: re.Match, spec: SpecIndex) -> str:
     if m.group("own"):
         return spec.spec_number
-    ts = m.group("ts") or m.group("bts")
+    ts = m.group("ts") or m.group("bts") or m.groupdict().get("bare")
     if ts:
         return ts if "." in ts else f"{ts[:2]}.{ts[2:]}"
     return spec.references.get(m.group("bn"), _NO_SPEC)
 
 
+def _by_context(t: Target, ctx: tuple[str, str | None] | None) -> Target | None:
+    """모호한 번호의 후보 가운데 참조와 같은 파일·같은 하위 제목 아래에 있는 것이 하나뿐이면 그 후보."""
+    if ctx is None:
+        return None
+    hits = [c for c in t.candidates if (c.file, c.section) == ctx]
+    return hits[0] if len(hits) == 1 else None
+
+
 def _resolve(kind: str, ident: str, number: str | None, spec: SpecIndex,
-             corpus: CorpusIndex) -> tuple[str, str | None, str, Target | None]:
+             corpus: CorpusIndex, ctx: tuple[str, str | None] | None = None,
+             ) -> tuple[str, str | None, str, Target | None]:
     if number == _NO_SPEC:    # 참고문헌 [n]이 3GPP 규격이 아님(목록에 없음), 또는 다른 문서 지시
         return "", None, "missing_spec", None
     if number is None or number == spec.spec_number:
@@ -211,15 +231,28 @@ def _resolve(kind: str, ident: str, number: str | None, spec: SpecIndex,
     store = {"table": target_spec.tables, "figure": target_spec.figures,
              "clause": target_spec.clauses}[kind]
     t = store.get(ident)
+    if t is None:    # 대소문자만 다른 번호(본문 5.3.19a, 제목 5.3.19A)는 후보가 하나일 때만 쓴다
+        t = target_spec.folded(kind).get(ident.lower())
     if t is None:
+        # Void로 비어 있는 번호: 상태는 void, Void 제목·캡션 줄이 있으면 그곳으로 링크한다
+        voids = target_spec.voids[kind]
+        hit = ident if ident in voids else next((v for v in voids if v.lower() == ident.lower()), None)
+        if hit is not None:
+            return target_spec.spec_number, target_spec.code, "void", voids[hit]
         return target_spec.spec_number, target_spec.code, "missing_target", None
     if t.ambiguous:
-        return target_spec.spec_number, target_spec.code, "ambiguous", None
+        # 같은 규격 안의 참조만 문맥(파일·하위 제목)으로 고른다
+        t = _by_context(t, ctx) if target_spec is spec else None
+        if t is None:
+            return target_spec.spec_number, target_spec.code, "ambiguous", None
     return target_spec.spec_number, target_spec.code, "resolved", t
 
 
-def find_refs(text: str, spec: SpecIndex, corpus: CorpusIndex) -> list[Ref]:
-    """본문 참조를 찾아 해석한다. start 순으로 정렬해 돌려준다."""
+def find_refs(text: str, spec: SpecIndex, corpus: CorpusIndex,
+              from_file: str | None = None) -> list[Ref]:
+    """본문 참조를 찾아 해석한다. start 순으로 정렬해 돌려준다.
+    from_file(규격 폴더 기준 경로)을 주면 모호한 번호를 같은 하위 제목 아래의 후보로 고를 수 있다."""
+    secs = line_sections(text.split("\n")) if from_file else None
     spans = protected_spans(text)
     starts = [a for a, _ in spans]
     line_starts = [0] + [m.end() for m in re.finditer("\n", text)]
@@ -319,10 +352,12 @@ def find_refs(text: str, spec: SpecIndex, corpus: CorpusIndex) -> list[Ref]:
         pos = max(pos, cur)
 
         for a, b, ident in items:
-            tsn, code, status, target = _resolve(kind, ident, number, spec, corpus)
+            line = bisect.bisect_right(line_starts, a)
+            ctx = (from_file, secs[line - 1]) if secs is not None else None
+            tsn, code, status, target = _resolve(kind, ident, number, spec, corpus, ctx)
             refs.append(Ref(
                 start=a, end=b, text=text[a:b],
-                line=bisect.bisect_right(line_starts, a),
+                line=line,
                 kind=kind, target_id=ident, target_spec_number=tsn,
                 target_code=code, status=status, target=target,
             ))

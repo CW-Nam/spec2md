@@ -79,3 +79,24 @@ def test_slugify_matches_checker():
     spec.loader.exec_module(mod)
     for t in ["RRCReconfiguration", "Foreword", "UE (User Equipment)", "  -x-  ", "π/2-BPSK"]:
         assert H.slugify(t) == mod.slugify(t)
+
+
+@pytest.mark.parametrize("text,expected", [
+    # 38306-j40: 부속서 하위 조항 번호 뒤에 콜론
+    ("A.1:\tTDD/FDD differentiation of capabilities in TDD-FDD CA",
+     ("A.1", "TDD/FDD differentiation of capabilities in TDD-FDD CA")),
+    ("A.5:\tGeneral differentiation", ("A.5", "General differentiation")),
+    ("Annex A (normative):\tTitle", ("A", "Title")),
+    ("NOTE:\tnot a heading number", (None, "NOTE:\tnot a heading number")),
+])
+def test_colon_after_number(inspect_mod, text, expected):
+    assert H.parse_clause(text) == expected == inspect_mod.parse_clause(text)
+
+
+@pytest.mark.parametrize("name,level", [("Header 6", 6), ("Header 7", 7), ("header", None)])
+def test_header_n_style_is_heading(inspect_mod, name, level):
+    # 38101-5-j60: "8.1.3.4.2.1 Derivation of Noc values …"가 사용자 정의 스타일 "Header 6"(outlineLvl 없음)이다.
+    # 쪽 머리글 스타일 "header"(번호 없음)는 제목이 아니다.
+    styles = {"Hdr": (name, None)}
+    el = _el(p("Hdr", "8.1.3.4.2.1\tDerivation of Noc values"))
+    assert H.para_style(el, styles) == (name, level) == inspect_mod.para_style(el, styles)

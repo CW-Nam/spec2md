@@ -25,6 +25,23 @@ PUA_RE = re.compile(r"[-]")  # unmapped Symbol/Wingdings font characters
 SKIP_TITLES = {"contents", "table of contents"}
 
 
+def is_change_history(title):
+    """The 'Change history' annex is not converted (output-contract.md section 5)."""
+    return title.strip().rstrip(":").strip().lower() == "change history"
+
+
+def drop_change_history(outline):
+    """Remove change history headings and the headings under them."""
+    kept, skip_level = [], None
+    for h in outline:
+        if skip_level is not None and h["level"] > skip_level:
+            continue
+        skip_level = h["level"] if is_change_history(h["title"]) else None
+        if skip_level is None:
+            kept.append(h)
+    return kept
+
+
 def read_front_matter(text):
     if not text.startswith("---"):
         return None
@@ -76,7 +93,8 @@ def main():
         errors.append(f"manifest source_files {man['source_files']} != inspected parts {src_files}")
 
     # 2. outline coverage
-    outline = [h for h in src.get("outline", []) if h["title"].strip().lower() not in SKIP_TITLES]
+    outline = drop_change_history(
+        [h for h in src.get("outline", []) if h["title"].strip().lower() not in SKIP_TITLES])
     got_keys = [key_of(c) for c in clauses]
     got_set = set(got_keys)
     all_keys = {key_of(h) for h in outline}
@@ -164,7 +182,7 @@ def main():
     # 4. element counts vs source
     def total(key):
         return sum(int(c.get(key, 0) or 0) for c in clauses)
-    src_tables = src.get("tables", {}).get("body_level", 0)
+    src_tables = src.get("tables", {}).get("body_level", 0) - src.get("tables", {}).get("change_history", 0)
     if total("tables") != src_tables:
         warnings.append(f"tables: source {src_tables} vs manifest {total('tables')} "
                         "(cover/front-matter tables may be skipped intentionally)")

@@ -4,7 +4,7 @@ import os
 
 from docx_builder import PNG, build, cover, drawing, p, table, row, cell
 from spec2md.cli import group_dir, main
-from spec2md.reader import split_name, version_from_code
+from spec2md.reader import part_sort_key, split_name, version_from_code
 
 
 def make_parts(d):
@@ -28,6 +28,15 @@ def test_split_name_and_version():
     assert split_name("38331-j40.docx") == ("38331-j40", None)
     assert version_from_code("38331-i10") == ("38.331", "18.1.0")
     assert version_from_code("38101-1-j70") == ("38.101-1", "19.7.0")
+
+
+def test_part_sort_numeric_prefix():
+    names = [f"38133-j60_{i}_s{i}.docx" for i in range(22)]
+    assert sorted(reversed(names), key=part_sort_key) == names  # 0, 1, 2, ..., 10, ..., 21
+    plain = ["36101-j60_cover.docx", "36101-j60_s00-07.docx", "36101-j60_s08-XX.docx",
+             "36101-j60_sAnnexes.docx", "36211-j30_s00-s05.docx", "38101-1-j70_0_cover.docx",
+             "38101-1-j70_7_sAnnexes.docx", "38101-3-j70_cover.docx", "38331-j40.docx"]
+    assert sorted(reversed(plain), key=part_sort_key) == sorted(plain)
 
 
 def test_multipart(tmp_path, convert):

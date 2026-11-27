@@ -10,10 +10,15 @@ from . import __version__
 from .blocks import MediaStore, Renderer, paragraph_block, style_kind, table_block
 from .headings import Heading, clause_parent, heading_text, para_style
 from .ns import M, W, local
-from .reader import Part, basename, find_cover_version, split_name, version_from_code
+from .reader import Part, basename, find_cover_version, part_sort_key, split_name, version_from_code
 from .split import Section, file_name, front_matter, plan, totals
 
 SKIP_TITLES = {"contents", "table of contents"}
+
+
+def is_change_history(title):
+    """'Change history' annex (also 'Change History', 'Change history:'): not converted."""
+    return title.strip().rstrip(":").strip().lower() == "change history"
 BODY_IGNORE = {"sectPr", "bookmarkStart", "bookmarkEnd", "proofErr", "permStart", "permEnd",
                "commentRangeStart", "commentRangeEnd", "moveFromRangeStart", "moveFromRangeEnd",
                "moveToRangeStart", "moveToRangeEnd"}
@@ -29,7 +34,7 @@ class ConversionError(Exception):
 
 def group_paths(paths):
     """Sort parts by file name and check they belong to one spec code."""
-    paths = sorted(paths, key=basename)
+    paths = sorted(paths, key=part_sort_key)
     codes = {split_name(p)[0] for p in paths}
     if len(codes) != 1:
         raise ConversionError(f"files belong to different spec codes: {sorted(codes)}")
@@ -52,6 +57,7 @@ class SpecConverter:
         self.warnings = []
         self.files = 0
         self.multi = any(split_name(p)[1] for p in self.paths)
+        self.history_level = None  # level of the change history heading being skipped
 
     # ------------------------------------------------------------------
     def _log(self, msg):
@@ -208,6 +214,13 @@ class SpecConverter:
                                 self._skip(part, "contents")
                                 continue
                             in_contents = False
+                            if self.history_level is not None and h.level > self.history_level:
+                                continue  # sub-heading of the change history annex
+                            self.history_level = None
+                            if is_change_history(h.title):
+                                self.history_level = h.level
+                                self._skip(part, "change history")
+                                continue
                             h.equations = sum(1 for _ in node.iter(M + "oMath"))
                             self._start_heading(h)
                             continue
@@ -222,7 +235,7 @@ class SpecConverter:
                         if not seen_heading:
                             cover_marks = True
                         continue
-                    if in_contents:
+                    if in_contents or self.history_level is not None:
                         continue
                     if not seen_heading:
                         pre_seen = True
@@ -241,7 +254,7 @@ class SpecConverter:
                     else:
                         target.add("", figures=res.figures, equations=res.equations)
                 elif tag == W + "tbl":
-                    if in_contents:
+                    if in_contents or self.history_level is not None:
                         continue
                     if not seen_heading:
                         pre_seen = True

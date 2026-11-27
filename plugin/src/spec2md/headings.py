@@ -16,7 +16,7 @@ CLAUSE_RE = re.compile(
     r"^\s*((?:[A-Z]{1,2}|\d+[A-Za-z]{0,2}\d*)(?:\.(?:\d+[A-Za-z]{0,2}\d*|[A-Z]))*)\.?:?[\s ]+(.+)$")
 ANNEX_RE = re.compile(r"^\s*Annex\s+([A-Z]{1,2})\b\s*(.*)$", re.I)
 # typo in the source number "5. 2.2.4.2.3<TAB>Title" (space after the first dot) -> "5.2.2.4.2.3"
-SPLIT_NUM_RE = re.compile(r"^(\d+[A-Za-z]{0,2}\d*)\.\s+(\d+[A-Za-z]{0,2}\d*(?:\.\d+[A-Za-z]{0,2}\d*)+)(?=\t)")
+SPLIT_NUM_RE = re.compile(r"^((?:\d+[A-Za-z]{0,2}\d*|[A-Z]{1,2}(?=\.\d))(?:\.\d+[A-Za-z]{0,2}\d*)*)\.\s+(\d+[A-Za-z]{0,2}\d*(?:\.\d+[A-Za-z]{0,2}\d*)+)(?=\t)")
 
 
 def outline_level(ol):

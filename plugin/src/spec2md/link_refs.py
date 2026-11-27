@@ -55,6 +55,10 @@ _TRAIL_RE = re.compile(
 # 번호가 바로 붙을 수 있다(RFC3550, IEEE802.11). ETR/ETS만 낱말 끝을 확인한다.
 _OTHER_DOCUMENT = r"(?:RFC|IETF|IEEE|ITU|ETSI|ANSI|ISO|ET[RS](?![A-Za-z]))"
 _OTHER_RE = re.compile(rf"{_OF}(?:3GPP|T[SR](?:\d|\b)|{_OTHER_DOCUMENT}|\[)")
+# 번호와 뒤쪽 지시 사이의 괄호 제목: "clause 5.5.1.2.2 (S1-based handover, normal) in TS 23.401 [13]".
+# 괄호 뒤에는 "of|in|from …" 지시만 받는다. 괄호 안에 참조가 있으면 건너뛰지 않는다.
+_PAREN_RE = re.compile(rf"{_SP0}\([^()\[\]\n]{{1,120}}\)")
+_PAREN_TRAIL_RE = re.compile(rf"{_OF}{_TRAIL_DESIG}")
 _PREFIX_RE = re.compile(rf"{_DESIG}(?:{_SP0},)?{_SP}\Z")
 # 참조를 둘러싼 대괄호의 여는 부분: [n, …] 또는 [다른 문서 …]
 _BRACKET_OPEN_RE = re.compile(rf"\[(?:(?P<cite>\d+){_SP0},|{_OTHER_DOCUMENT})")
@@ -187,6 +191,12 @@ def _chain(text: str, cur: int, kind: str, spans: list[tuple[int, int]],
 def _trail(text: str, cur: int) -> tuple[re.Match | None, bool]:
     """cur 바로 뒤의 규격 지시와, 3GPP 규격으로 읽을 수 없는 다른 문서 지시가 있는지."""
     t = _TRAIL_RE.match(text, cur)
+    if t is None and _OTHER_RE.match(text, cur) is None:
+        pm = _PAREN_RE.match(text, cur)
+        if pm is not None and _HEAD_RE.search(pm.group(0)) is None:
+            pt = _PAREN_TRAIL_RE.match(text, pm.end())
+            if pt is not None or _OTHER_RE.match(text, pm.end()) is not None:
+                return pt, pt is None
     return t, t is None and _OTHER_RE.match(text, cur) is not None
 
 

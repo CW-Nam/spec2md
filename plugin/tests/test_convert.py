@@ -79,6 +79,11 @@ def sample_body():
         p("Heading8", "Annex A (normative):", BR, "Measurement channels"),
         p("Heading1", "A.1\tGeneral"),
         p("Normal", "Annex text."),
+        p("Heading8", "Annex B (informative):", BR, "Change history:"),
+        table(1, row(cell(p("TAL", "2026-01")), cell(p("TAL", "CR0001")))),
+        p("Normal", "History text."),
+        p("Heading1", "B.1	Old versions"),
+        p("Normal", "Old history."),
     ])
 
 
@@ -95,7 +100,7 @@ def test_manifest_and_metadata(sample, convert):
     assert m["version"] == "18.1.0" and m["release"] == "Rel-18"
     assert m["source_files"] == ["38999-i10.docx"]
     assert m["split_depth"] == 3
-    assert m["skipped"] == ["cover", "contents"]
+    assert m["skipped"] == ["cover", "contents", "change history"]
     keys = [c["clause"] for c in m["clauses"]]
     assert keys == ["foreword", "1", "5", "5.1", "5.1.1", "5.1.2", "5.2", "rrcsetup", "A", "A.1"]
     assert [c["order"] for c in m["clauses"]] == list(range(1, 11))
@@ -227,6 +232,7 @@ def test_reference_scripts_agree(sample, convert, tmp_path):
                        capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
     assert "errors=0" in r.stdout
+    assert "tables: source 3 vs manifest 2" in r.stdout  # change history table not counted
 
 
 def test_python_docx_opens_fixture(sample):

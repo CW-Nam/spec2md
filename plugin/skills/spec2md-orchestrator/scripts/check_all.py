@@ -26,6 +26,12 @@ SKILLS = os.path.dirname(os.path.dirname(HERE))
 INSPECT = os.path.join(SKILLS, "3gpp-docx-structure", "scripts", "inspect_docx.py")
 CHECK = os.path.join(SKILLS, "conversion-check", "scripts", "check_output.py")
 PART_RE = re.compile(r"^(\d{5}(?:-\d+)?-[0-9a-z]\d{2})_(.+)$")
+NUM_PART_RE = re.compile(r"^(\d{5}(?:-\d+)?-[0-9a-z]\d{2}_)(\d+)(?=_)")
+
+
+def part_sort_key(path):
+    """File-name order, but a numeric part prefix ('38133-j60_10_sA06...') sorts as a number."""
+    return NUM_PART_RE.sub(lambda m: m.group(1) + m.group(2).zfill(9), os.path.basename(path))
 
 
 def spec_code(path):
@@ -36,7 +42,7 @@ def spec_code(path):
 
 def group_specs(docs):
     groups = {}
-    for d in sorted(docs, key=os.path.basename):
+    for d in sorted(docs, key=part_sort_key):
         groups.setdefault(spec_code(d), []).append(d)
     return dict(sorted(groups.items()))
 

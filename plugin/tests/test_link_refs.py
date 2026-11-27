@@ -577,3 +577,19 @@ def test_void_status(tmp_path):
     refs = find_refs("see clause 5.2, Table 5.5-2 and Table 5.5-9.", c.specs["36104-j20"], c)
     assert [(r.target_id, r.status, r.target and r.target.anchor) for r in refs] == [
         ("5.2", "void", None), ("5.5-2", "void", "table-5.5-2"), ("5.5-9", "missing_target", None)]
+
+
+def test_parenthesized_title_before_trailing_designator(c):
+    # 23.502: "Step 9 - 11 from clause 5.5.1.2.2 (S1-based handover, normal) in TS 23.401 [13]."
+    s = "Step 9 - 11 from clause 5.1.2 (S1-based handover, normal) in TS 38.214 [6]. Then"
+    assert ids(find(c, s)) == [("clause", "5.1.2", "38.214", "resolved")]
+    # 23.502: 'clause 4.15.3.2.4 ("Exposure with bulk subscription") in TS 23.502 [3]'
+    s = 'as in clause 6.1 ("Exposure with bulk subscription") in TS 38.214 [6], if'
+    assert ids(find(c, s)) == [("clause", "6.1", "38.214", "resolved")]
+    # 38.331: "Annex L (normative) in TS 26.247 [90]": 26.247 is not in the corpus
+    s = "see Annex B (normative) in TS 26.247 [90] and"
+    assert ids(find(c, s)) == [("clause", "B", "26.247", "missing_spec")]
+    # a reference inside the parentheses is kept, and the parentheses are not skipped
+    s = "clause 4.2 (see Table 4.2-1) in TS 38.214 [6]"
+    got = ids(find(c, s))
+    assert got[0] == ("clause", "4.2", "38.213", "resolved") and got[1][:2] == ("table", "4.2-1")

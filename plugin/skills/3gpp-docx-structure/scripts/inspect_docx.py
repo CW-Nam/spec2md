@@ -9,7 +9,7 @@ Usage:
   python inspect_docx.py SPEC.docx --json OUT.json # full report (used by check_output.py)
   python inspect_docx.py SPEC.docx --samples 3     # sample texts per style
   python inspect_docx.py P1.docx P2.docx ... --json OUT.json
-      # multi-part spec: parts are merged in sorted file-name order into one
+      # multi-part spec: parts are merged in file-name order (numeric part prefix as a number) into one
       # report (outline order continues across parts; see output-contract.md)
 """
 import argparse
@@ -24,8 +24,9 @@ W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 M = "{http://schemas.openxmlformats.org/officeDocument/2006/math}"
 O = "{urn:schemas-microsoft-com:office:office}"
 MC_FALLBACK = "{http://schemas.openxmlformats.org/markup-compatibility/2006}Fallback"
-# source typo "5. 2.2.4.2.3<TAB>Title" (36.133): a space after the first dot splits the number
-SPLIT_NUM_RE = re.compile(r"^(\d+[A-Za-z]{0,2}\d*)\.\s+(\d+[A-Za-z]{0,2}\d*(?:\.\d+[A-Za-z]{0,2}\d*)+)(?=\t)")
+# source typo "5. 2.2.4.2.3<TAB>Title" (36.133), "10.1. 38A.1", "A.6. 11.3.1.3" (38.133):
+# a space after a dot splits the number
+SPLIT_NUM_RE = re.compile(r"^((?:\d+[A-Za-z]{0,2}\d*|[A-Z]{1,2}(?=\.\d))(?:\.\d+[A-Za-z]{0,2}\d*)*)\.\s+(\d+[A-Za-z]{0,2}\d*(?:\.\d+[A-Za-z]{0,2}\d*)+)(?=\t)")
 # "heading 3" (Word built-in) and 3GPP custom "H6" (defined with outlineLvl 9 = body text)
 HEADING_RE = re.compile(r"^(?:heading\s*|header\s*|h)(\d)$", re.I)  # "Header 6": custom style in 38101-5
 # "5.3.5", "A.1.2", "Annex A (normative):", "Foreword"
@@ -141,16 +142,24 @@ def basename(path):
     return path.replace("\\", "/").split("/")[-1]
 
 
+NUM_PART_RE = re.compile(r"^(\d{5}(?:-\d+)?-[0-9a-z]\d{2}_)(\d+)(?=_)")
+
+
+def part_sort_key(path):
+    """File-name order, but a numeric part prefix ('38133-j60_10_sA06...') sorts as a number."""
+    return NUM_PART_RE.sub(lambda m: m.group(1) + m.group(2).zfill(9), basename(path))
+
+
 def inspect(paths, n_samples):
     if isinstance(paths, str):
         paths = [paths]
-    paths = sorted(paths, key=basename)
+    paths = sorted(paths, key=part_sort_key)
     report = {
         "source_file": basename(paths[0]),
         "source_files": [basename(p) for p in paths],
         "paragraph_styles": Counter(),
         "outline": [],
-        "tables": {"body_level": 0, "with_merged_cells": 0, "nested": 0},
+        "tables": {"body_level": 0, "with_merged_cells": 0, "nested": 0, "change_history": 0},
         "figures": {"drawing": 0, "vml_pict": 0, "ole_object": 0},
         "equations": 0,
         "equation_objects": 0,
@@ -195,6 +204,9 @@ def _inspect_one(path, report, samples, n_samples, order):
                 order += 1
             elif tag == W + "tbl":
                 report["tables"]["body_level"] += 1
+                last = report["outline"][-1] if report["outline"] else None
+                if last and last["title"].strip().rstrip(":").strip().lower() == "change history":
+                    report["tables"]["change_history"] += 1  # not converted (output-contract.md 5)
                 if el.find(".//" + W + "gridSpan") is not None or el.find(".//" + W + "vMerge") is not None:
                     report["tables"]["with_merged_cells"] += 1
                 if el.find(".//" + W + "tc//" + W + "tbl") is not None:

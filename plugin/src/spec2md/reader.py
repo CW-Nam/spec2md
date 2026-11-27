@@ -17,12 +17,18 @@ from .headings import outline_level
 from .ns import PKG_REL, W
 
 PART_RE = re.compile(r"^(\d{5}(?:-\d+)?-[0-9a-z]\d{2})_(.+)$")
+NUM_PART_RE = re.compile(r"^(\d{5}(?:-\d+)?-[0-9a-z]\d{2}_)(\d+)(?=_)")  # '_10_s...' part prefix
 CODE_RE = re.compile(r"^(\d{2})(\d{3})(-\d+)?-([0-9a-z])([0-9a-z])([0-9a-z])$")
 COVER_VERSION_RE = re.compile(r"3GPP\s+(T[SR])\s+(\d+\.\d+(?:-\d+)?)\s+V(\d+)\.(\d+)\.(\d+)")
 
 
 def basename(path):
     return path.replace("\\", "/").split("/")[-1]
+
+
+def part_sort_key(path):
+    """File-name sort key; a numeric part prefix ('38133-j60_10_sA06...') sorts as a number."""
+    return NUM_PART_RE.sub(lambda m: m.group(1) + m.group(2).zfill(9), basename(path))
 
 
 def stem(path):

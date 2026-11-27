@@ -6,7 +6,7 @@ import sys
 import traceback
 
 from .convert import ConversionError, SpecConverter, log
-from .reader import basename, spec_code
+from .reader import basename, part_sort_key, spec_code
 
 
 def _depth_overrides(items):
@@ -30,7 +30,7 @@ def cmd_convert(a):
 
 
 def group_dir(spec_dir):
-    docs = sorted(glob.glob(os.path.join(spec_dir, "*.docx")), key=basename)
+    docs = sorted(glob.glob(os.path.join(spec_dir, "*.docx")), key=part_sort_key)
     docs = [d for d in docs if not basename(d).startswith("~$")]  # Word lock files
     groups = {}
     for d in docs:

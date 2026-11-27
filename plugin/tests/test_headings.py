@@ -21,6 +21,9 @@ TEXTS = [
     ("5. 2.2.4.2.3\tX", ("5.2.2.4.2.3", "X")),
     ("5.\tScope", ("5", "Scope")),
     ("5. 2 things\tx", ("5", "2 things\tx")),
+    ("10.1. 38A.1\tIntroduction", ("10.1.38A.1", "Introduction")),
+    ("A.6. 11.3.1.3\tTest requirements", ("A.6.11.3.1.3", "Test requirements")),
+    ("A. 1.2\tX", (None, "A. 1.2\tX")),  # lone annex letter: not merged (unchanged)
 ])
 def test_split_number_typo(inspect_mod, text, expected):
     assert H.parse_clause(text) == expected == inspect_mod.parse_clause(text)

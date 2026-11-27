@@ -5,7 +5,7 @@ import bisect
 import re
 from dataclasses import dataclass
 
-from .link_index import CorpusIndex, SpecIndex, Target
+from .link_index import PLAIN_CAPTION_RE, CorpusIndex, SpecIndex, Target
 
 # 번호 모양. 각 부분이 점으로 시작하므로 나누는 방법이 하나뿐이라 되돌아가기가 폭주하지 않는다.
 _HEAD_SEG = r"(?:\d+[A-Za-z]?|[A-Z])"
@@ -26,6 +26,7 @@ _SEP_RE = re.compile(rf"{_SP0},?{_SP}(?P<conj>and|or|to){_SP}|(?P<slash>/)|{_SP0
 _SLASH_TAIL_RE = re.compile(r"(?:/[0-9A-Za-z][0-9A-Za-z.\-]*)+")   # 7.3.1.1.2-28/29/30 의 /29/30
 _CAPTION_NUM_RE = re.compile(rf"{_CAPTION_NUM}{_END}")
 _CLAUSE_NUM_RE = re.compile(rf"{_CLAUSE_NUM}{_END}")
+_ANNEX_LIST_NUM_RE = re.compile(rf"(?:{_CLAUSE_NUM}|[A-Z]\d+(?:\.[0-9A-Za-z]+)+){_END}")
 
 # 규격 지시: [3GPP ]TS|TR nn.nnn[ [n]], [n], [n, TS nn.nnn], [n. TS nn.nnn], [n TS nn.nnn],
 # [n, nn.nnn], [TS nn.nnn], [nn.nnn]
@@ -41,13 +42,19 @@ _OF = (rf"{_SP}(?:(?:as{_SP})?(?:defined|specified|described|given){_SP})?"
 _TRAIL_RE = re.compile(rf"(?:{_OF}|{_SP0}(?=\[)){_DESIG}")
 # 다른 문서를 가리키는 듯하지만 3GPP 규격 지시로 읽히지 않는 꼬리(IETF RFC, IEEE Std, TS 오타 …).
 # 이때는 현재 규격 안에서 해석하지 않는다(틀린 링크 금지).
-_OTHER_RE = re.compile(rf"{_OF}(?:3GPP|T[SR](?:\d|\b)|RFC|IETF|IEEE|ITU|ETSI|ANSI|ISO|\[)")
+# 번호가 바로 붙을 수 있다(RFC3550, IEEE802.11). ETR/ETS만 낱말 끝을 확인한다.
+_OTHER_DOCUMENT = r"(?:RFC|IETF|IEEE|ITU|ETSI|ANSI|ISO|ET[RS](?![A-Za-z]))"
+_OTHER_RE = re.compile(rf"{_OF}(?:3GPP|T[SR](?:\d|\b)|{_OTHER_DOCUMENT}|\[)")
 _PREFIX_RE = re.compile(rf"{_DESIG}(?:{_SP0},)?{_SP}\Z")
+# 참조를 둘러싼 대괄호의 여는 부분: [n, …] 또는 [다른 문서 …]
+_BRACKET_OPEN_RE = re.compile(rf"\[(?:(?P<cite>\d+){_SP0},|{_OTHER_DOCUMENT})")
+_BRACKET_CLOSE_RE = re.compile(r"[^\[\]\n]*\]")
 _GAP_RE = re.compile(rf"{_SP}\Z")
 _PREFIX_WINDOW = 48
 _NO_SPEC = ""    # _resolve: 지시는 있으나 3GPP 규격으로 읽을 수 없음
 
 _SINGULAR_CLAUSE = {"clause", "subclause", "section"}
+_ANNEX_WORDS = {"annex", "annexes"}
 
 _FENCE_RE = re.compile(r"(```|~~~)")
 _INLINE_RE = re.compile(r"\$\$.*?\$\$|\$[^$\n]+\$|<[A-Za-z/!][^<>]*>", re.S)
@@ -110,7 +117,7 @@ def protected_spans(text: str) -> list[tuple[int, int]]:
             continue
         if _FENCE_RE.match(ln):
             fence_start = offsets[i]
-        elif ln.startswith(("#", "**Table ", "*Figure ")):
+        elif ln.startswith(("#", "**Table ", "*Figure ")) or PLAIN_CAPTION_RE.match(ln):
             line_spans.append((offsets[i], line_end(i)))
     if fence_start is not None:
         line_spans.append((fence_start, len(text)))
@@ -172,6 +179,15 @@ def _trail(text: str, cur: int) -> tuple[re.Match | None, bool]:
     return t, t is None and _OTHER_RE.match(text, cur) is not None
 
 
+def _bracket(text: str, lo: int, start: int, end: int) -> re.Match | None:
+    """start..end 참조가 같은 줄의 '[n, … ]' 또는 '[다른 문서 … ]' 안에 있으면 여는 부분 매치."""
+    a = text.rfind("[", max(lo, text.rfind("\n", 0, start) + 1), start)
+    if a < 0 or "]" in text[a:start]:
+        return None
+    o = _BRACKET_OPEN_RE.match(text, a)
+    return o if o is not None and _BRACKET_CLOSE_RE.match(text, end) else None
+
+
 def _desig_spec(m: re.Match, spec: SpecIndex) -> str:
     if m.group("own"):
         return spec.spec_number
@@ -220,6 +236,8 @@ def find_refs(text: str, spec: SpecIndex, corpus: CorpusIndex) -> list[Ref]:
             continue
         kind, word, ident = _head(m)
         num_re = _CLAUSE_NUM_RE if kind == "clause" else _CAPTION_NUM_RE
+        if word in _ANNEX_WORDS:
+            num_re = _ANNEX_LIST_NUM_RE
         items = [(m.start(), m.end(), ident)]
         elide_needs_dot = word in _SINGULAR_CLAUSE
 
@@ -236,9 +254,11 @@ def find_refs(text: str, spec: SpecIndex, corpus: CorpusIndex) -> list[Ref]:
             n = num_re.match(text, s.end())
             if n is None or _overlaps(spans, starts, n.start(), n.end()):
                 break
-            if elide_needs_dot and "." not in n.group(0):
+            item_id = n.group(0)
+            if (elide_needs_dot and "." not in item_id
+                    or word in _ANNEX_WORDS and not _CLAUSE_NUM_RE.fullmatch(item_id)):
                 dotted = False
-            items.append((n.start(), n.end(), n.group(0)))
+            items.append((n.start(), n.end(), item_id))
             cur = n.end()
             if (s.group("conj") or s.group("slash")) and dotted:
                 keep = len(items)
@@ -251,16 +271,30 @@ def find_refs(text: str, spec: SpecIndex, corpus: CorpusIndex) -> list[Ref]:
 
         # 규격 지시: 뒤쪽 우선, 없으면 바로 앞쪽
         p = None
+        bracket = None
         if t is None and not other:
             lo = max(consumed, m.start() - _PREFIX_WINDOW)
-            p = _PREFIX_RE.search(text, lo, m.start())
+            bracket = _bracket(text, consumed, m.start(), cur)
+            if bracket is None:
+                p = _PREFIX_RE.search(text, lo, m.start())
+            elif bracket["cite"] is not None:
+                p = _PREFIX_RE.search(text, max(consumed, bracket.start() - _PREFIX_WINDOW),
+                                      bracket.start())
+                # "TS 38.214 [5, clause 4]"는 앞 지시를 쓰지만, 앞 지시에 다른 참고문헌 번호가
+                # 붙어 있으면("TS 38.331 [2], [5, clause 4]") 대괄호 안 번호를 쓴다.
+                own = p and (p["tn"] or p["bn"] or p["bn2"])
+                if own and own != bracket["cite"]:
+                    p = None
             # 같은 단어가 되풀이되는 나열(Table X, Table Y and Table Z of [2])은 지시를 함께 쓴다.
             # 첫 항목 바로 앞에 지시가 있으면 그 지시를 쓰고, 이때 나열 뒤 지시는 뒤 항목에만 남긴다.
-            if len(items) == 1:
+            clause_range = (kind == "clause" and len(items) == 2
+                            and _SEP_RE.match(text, m.end())["conj"] == "to")
+            if bracket is None and (len(items) == 1 or clause_range):
                 chain, chain_end = _chain(text, cur, kind, spans, starts)
-                if chain:
+                # "clause X to Y and Annex Z of TR ..."도 하나의 문서를 가리킨다.
+                if chain and (not clause_range or text[chain[0][0]:chain[0][1]].lower().startswith("annex")):
                     ct, cother = _trail(text, chain_end)
-                    if p is not None and ct is None and not cother:
+                    if not clause_range and p is not None and ct is None and not cother:
                         items += chain
                         cur = chain_end
                     elif p is None and (ct is not None or cother):
@@ -276,6 +310,8 @@ def find_refs(text: str, spec: SpecIndex, corpus: CorpusIndex) -> list[Ref]:
             pos = max(pos, t.end())
         elif p is not None:
             number = _desig_spec(p, spec)
+        elif bracket is not None:
+            number = spec.references.get(bracket["cite"], _NO_SPEC)
         elif carry is not None and carry[0] < m.start() and _GAP_RE.match(text[carry[0]:m.start()]):
             # "TS 36.211 clause 4.2 Table 4.2-2"
             number = carry[1]

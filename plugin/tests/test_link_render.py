@@ -93,6 +93,17 @@ def test_backlinks_sorted_and_deduped(tmp_path):
     ]
 
 
+def test_backlinks_keep_same_source_filename_in_different_specs(tmp_path):
+    a = Backlink("38213-j50", "38.213", "clauses/0005_3.1_definitions.md", "3.1",
+                 "clause 4.2.21.1", "clause-4.2.21.1")
+    b = Backlink("38321-j40", "38.321", a.from_file, a.from_clause, a.text, a.target_anchor)
+    out = _render(tmp_path, [b, a, b])
+    assert out.split("## Referenced by\n\n")[1].splitlines() == [
+        "- [TS 38.213 3.1](0005_3.1_definitions.md) — clause 4.2.21.1",
+        "- [TS 38.321 3.1](../../38321-j40/clauses/0005_3.1_definitions.md) — clause 4.2.21.1",
+    ]
+
+
 def test_no_backlinks_no_section_and_deterministic(tmp_path):
     out = _render(tmp_path)
     assert "spec2md:backlinks" not in out

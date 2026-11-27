@@ -5,7 +5,7 @@ from spec2md.link_index import build_corpus_index
 from spec2md.link_refs import Ref, find_refs, protected_spans
 
 REFS = (
-    'Intro.\n\n- **[5]**: 3GPP TS 38.211: "NR; Physical channels".\n\n'
+    'Intro.\n\n- **[5]**: 3GPP TS 38.211: "NR; Physical channels".\n\n'
     '- **[6]**: 3GPP TS 38.214: "NR; Physical layer procedures for data".\n\n'
     '- **[7]**: 3GPP TR 21.905: "Vocabulary".\n'
 )
@@ -426,3 +426,64 @@ def test_space_before_list_comma(c):
     assert [(r.text, r.target_spec_number) for r in find(
         c, "specified in clause 6.2.2, 6.2A.2 , and 6.2D.2 of TS 38.101-2 [3] apply.")] == [
         ("clause 6.2.2", "38.101-2"), ("6.2A.2", "38.101-2"), ("6.2D.2", "38.101-2")]
+
+
+def test_annex_list_keeps_document_designator_after_dotless_item(c):
+    refs = find(c, "as specified in Annexes A.2.2.2, A3.2 and A.3.3 in TS 38.101-1 [5]")
+    assert [(r.text, r.target_id, r.target_spec_number) for r in refs] == [
+        ("Annexes A.2.2.2", "A.2.2.2", "38.101-1"),
+        ("A3.2", "A3.2", "38.101-1"),
+        ("A.3.3", "A.3.3", "38.101-1"),
+    ]
+
+
+def test_bracketed_document_before_clause(c):
+    assert ids(find(c, "Shared Risk is defined in [ETR 273 Part 1 sub-part 2 clause 6.5].")) == [
+        ("clause", "6.5", "", "missing_spec"),
+    ]
+    assert ids(find(c, "the UE decodes [5, Section 10] 5 subframes containing PMCH transmissions")) == [
+        ("clause", "10", "38.211", "missing_spec"),
+    ]
+    assert ids(find(c, "as defined in TS 38.214 [5, Section 5.1.2].")) == [
+        ("clause", "5.1.2", "38.214", "resolved"),
+    ]
+
+
+def test_clause_range_and_annex_share_designator(c):
+    refs = find(c, "as captured in clause 4.3 to 4.6 and Annex A.2.2 of TR  36.792[30].")
+    assert [(r.target_id, r.target_spec_number, r.status) for r in refs] == [
+        ("4.3", "36.792", "missing_spec"),
+        ("4.6", "36.792", "missing_spec"),
+        ("A.2.2", "36.792", "missing_spec"),
+    ]
+
+
+def test_other_document_number_without_space(c):
+    for s in ("clause 4 of RFC3550 applies.", "clause 4 of IEEE802.11 applies.",
+              "see [RFC3550 clause 4]."):
+        assert ids(find(c, s)) == [("clause", "4", "", "missing_spec")], s
+
+
+def test_bracket_cite_beats_designator_with_other_reference(c):
+    assert ids(find(c, "see TS 38.214 [6], [5, clause 4].")) == [
+        ("clause", "4", "38.211", "missing_spec"),
+    ]
+
+
+def test_bracket_designator_applies_to_every_item_inside(c):
+    assert ids(find(c, "see [5, clause 5.1 and clause 5.2].")) == [
+        ("clause", "5.1", "38.211", "missing_spec"),
+        ("clause", "5.2", "38.211", "missing_spec"),
+    ]
+    assert ids(find(c, "see [5, clause 5.1, Table 5.1-1].")) == [
+        ("clause", "5.1", "38.211", "missing_spec"),
+        ("table", "5.1-1", "38.211", "missing_spec"),
+    ]
+    assert ids(find(c, "see [IEEE 802.11, clause 4 and clause 9].")) == [
+        ("clause", "4", "", "missing_spec"),
+        ("clause", "9", "", "missing_spec"),
+    ]
+
+
+def test_bracket_cite_without_space_after_comma(c):
+    assert ids(find(c, "see [5,clause 4].")) == [("clause", "4", "38.211", "missing_spec")]

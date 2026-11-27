@@ -24,8 +24,11 @@ def _build(tmp_path):
         {"clause": "10.1", "title": "X", "level": 2, "parent": None, "file": F13,
          "body": "See clause 5.1.2 of [6] and Table 10.1-1 here and clause 10.1.\n\n"
                  "**Table 10.1-1: T**\n\n"
+                 "The mappings are specified in Table A.4-6 and Figure J.1-2.\n\n"
+                 "Table A.4-6: Mapping of CQI Index to Information Bit payload (CQI table 1)\n\n"
                  "<table><tr><td>see clause 5.1.2 of [6]</td></tr></table>\n\n"
-                 "![i](../media/image1.png)\n"},
+                 "![i](../media/image1.png)\n\n"
+                 "Figure J.1-2: DUT default alignment to coordinate system\n"},
     ])
     make_spec(raw, "38214-j50", "38.214", "19.0.0", [
         {"clause": "5.1.2", "title": "Y", "level": 3, "parent": None, "file": F14,
@@ -67,6 +70,10 @@ def test_end_to_end(tmp_path):
     # self reference linked, but no self backlink
     assert "](0001_10.1_x.md#table-10.1-1)" in t13 and "[clause 10.1](0001_10.1_x.md)" in t13
     assert "## Referenced by" not in t13
+    assert "[Table A.4-6](0001_10.1_x.md#table-A.4-6)" in t13
+    assert '<a id="table-A.4-6"></a>\nTable A.4-6: Mapping of CQI Index' in t13
+    assert "[Figure J.1-2](0001_10.1_x.md#figure-J.1-2)" in t13
+    assert '<a id="figure-J.1-2"></a>\nFigure J.1-2: DUT default alignment' in t13
     idx = json.loads(_read(f"{out}/index.json"))
     assert idx["38214-j50"]["spec_number"] == "38.214"
     assert idx["38214-j50"]["clauses"]["5.1.2"]["file"] == F14
@@ -77,6 +84,7 @@ def test_end_to_end(tmp_path):
     r0 = [r for r in refs["refs"] if r["target_spec"] == "38.214"][0]
     assert r0["from_clause"] == "10.1" and r0["status"] == "resolved"
     assert r0["target_file"] == F14 and r0["anchor"] is None
+    assert [r["target_id"] for r in refs["refs"] if r["target_id"] in ("A.4-6", "J.1-2")] == ["A.4-6", "J.1-2"]
 
 
 def test_raw_untouched(tmp_path):

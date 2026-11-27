@@ -13,8 +13,9 @@ _NUM = r"[0-9A-Z][0-9A-Za-z.]*-\d+[A-Za-z]{0,2}(?:-\d+[A-Za-z]{0,2})*(?![0-9A-Za
 _NOT_SPLIT = r"(?! [A-Z]\s*:)"
 _TABLE_RE = re.compile(rf"^\*\*Table ({_NUM}){_NOT_SPLIT}")
 _FIGURE_RE = re.compile(rf"^\*Figure ({_NUM}){_NOT_SPLIT}")
+PLAIN_CAPTION_RE = re.compile(rf"^[^\S\n]*(Table|Figure)[^\S\n]+({_NUM})[^\S\n]*:")
 _SUB_RE = re.compile(r"^#{2,6} ([0-9A-Z][0-9A-Za-z]*(?:\.[0-9A-Za-z]+)*)\.? ")
-_REF_RE = re.compile(r"\*\*\[(\d+)\]\*\*: 3GPP T[SR] (\d{2}\.\d{3}(?:-\d+)?)")
+_REF_RE = re.compile(r"\*\*\[(\d+)\]\*\*:[^\S\n]+3GPP[^\S\n]+T[SR][^\S\n]+(\d{2}\.\d{3}(?:-\d+)?)")
 _FENCE_RE = re.compile(r"^(```|~~~)")
 _NUMBERED_RE = re.compile(r"^(?:\d+[A-Za-z]?|[A-Z])(?:\.[0-9A-Za-z]+)*$")
 
@@ -111,6 +112,12 @@ def build_spec_index(spec_dir: str) -> SpecIndex:
             m = _FIGURE_RE.match(line)
             if m:
                 _add(idx.figures, m.group(1), Target(rel, anchor_id("figure", m.group(1)), lineno))
+                continue
+            m = PLAIN_CAPTION_RE.match(line)
+            if m:
+                kind, ident = m.groups()
+                store = idx.tables if kind == "Table" else idx.figures
+                _add(store, ident, Target(rel, anchor_id(kind.lower(), ident), lineno))
                 continue
             m = _SUB_RE.match(line)
             if m:

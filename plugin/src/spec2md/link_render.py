@@ -92,16 +92,10 @@ def render(text: str, refs: list[Ref], spec: SpecIndex, from_file: str,
     out = out.replace("](../media/", f"]({media_prefix}").replace('src="../media/', f'src="{media_prefix}')
 
     if backlinks:
-        uniq = {(b.from_file, b.target_anchor, b.text, b.from_spec_number, b.from_code, b.from_clause): b
-                for b in backlinks}
-        seen_keys: set[tuple] = set()
+        uniq = {(b.from_code, b.from_file, b.target_anchor, b.text): b for b in backlinks}
         rows: list[str] = []
         for b in sorted(uniq.values(), key=lambda b: (b.from_spec_number, b.from_file, b.text,
-                                                      b.target_anchor or "")):
-            key = (b.from_file, b.target_anchor, b.text)
-            if key in seen_keys:
-                continue
-            seen_keys.add(key)
+                                                      b.target_anchor or "", b.from_code)):
             link = href(spec.code, from_file, b.from_code, Target(b.from_file, None, 1))
             rows.append(f"- [TS {b.from_spec_number} {b.from_clause}]({link}) — {b.text}")
         out = out.rstrip("\n") + "\n\n" + BACKLINKS_MARKER + "\n## Referenced by\n\n" + "\n".join(rows) + "\n"

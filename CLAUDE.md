@@ -43,3 +43,4 @@ uv run --project plugin spec2md topics raw/{spec}/        # topics/topics.json �
 | 2026-11-26 | 마켓플레이스 이름 spec2md-local → spec2md, SessionStart 의존성 확인 훅, 원격 설치 안내, v0.3.0 | marketplace.json, plugin/hooks/, README.md | clone 없이 GitHub에서 설치 |
 | 2026-11-26 | uv로 의존성·실행 관리(uv.lock, `dev` 그룹, 스킬 명령 `uv run --project`), 훅은 uv 설치 확인, v0.4.0 | plugin/pyproject.toml, plugin/uv.lock, plugin/hooks/, 스킬·에이전트, README.md | 시스템 Python에 의존성이 없어도 스킬이 실행되게 |
 | 2026-11-26 | 원본 규격 폴더 `specs/` → `3gpp-specs/` 이름 변경 (check_all.py `--specs` 기본값 포함), v0.4.1 | .gitignore, 문서·스킬·check_all.py | 폴더 용도를 이름에서 분명히 |
+| 2026-11-27 | 기능 영역 분류(`feature-taxonomy.md`, 이전 nr-3gpp-wiki의 W01~W23-35) 추가, 규격 간 같은 개념에 같은 주제 id를 쓰는 원칙 | plugin/skills/topic-grouping/ | 규격마다 주제 id가 달라 위키 feature 페이지로 모으기 어려움 |

@@ -21,6 +21,7 @@ description: "spec2md로 조항별로 나눈 3GPP 규격 출력(raw/{spec}/manif
 5. **상용구 조항은 분류하지 않는다.** Foreword, Scope, References, 변경 이력 부속서 같은 조항은 `uncategorized`에 넣는다. 억지로 분류하지 않는다.
 6. **빠짐없이 처리한다.** 본문이 있는 모든 조항(`file`이 null이 아닌 조항)은 하나 이상의 주제에 들어가거나 `uncategorized`에 들어가야 한다. 마지막에 누락된 조항이 없는지 스크립트로 셀 수 있게 목록을 정확한 조항 번호로 쓴다.
 7. **id는 안정적으로 만든다.** 소문자 kebab-case 영어 slug를 쓴다(`rrc-reconfiguration`). 다시 실행할 때 같은 개념에는 같은 id를 유지해 이후 위키 링크가 깨지지 않게 한다.
+   **규격이 달라도 같은 개념이면 같은 id를 쓴다.** 새 주제의 id를 정하기 전에 `references/feature-taxonomy.md`의 기능 영역을 보고, 범위가 맞는 영역이 있으면 그 id를 그대로 쓴다. 이유: 위키 feature 페이지 하나가 여러 규격의 같은 주제를 모아야 한다.
 8. **제목과 요약은 영어로 쓴다.** 위키 raw 파일 언어와 맞춘다. `summary`는 범위를 한 문장으로만 쓴다. 기술 내용을 해석해 덧붙이지 않는다.
 
 ## 출력

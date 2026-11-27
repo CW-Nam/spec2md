@@ -116,8 +116,12 @@ description: "3GPP 규격 .docx를 LLM 위키용 조항·주제별 Markdown raw 
    ```
    uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_PLUGIN_ROOT}/skills/spec-linking/scripts/check_links.py" linked --raw raw --json _workspace/05_link_check.json
    ```
-3. ERROR(종료 코드 1)가 있으면 `subagent_type: "spec2md:converter-developer"`에 `_workspace/05_link_check.json`의 `errors`와 원인 진단을 맡긴다. 도구를 고친 뒤 1~2를 다시 실행한다. 검사기를 느슨하게 바꿔 통과시키지 않는다.
-4. WARN(`missing_target` 상위)은 `spec-linking` 스킬의 개선 절차에 따라 보고에 요약한다. 사용자가 요청할 때만 규칙 개선을 진행한다.
+3. 검사가 끝나면 해석하지 못한 참조의 점검용 HTML을 만든다.
+   ```
+   uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_PLUGIN_ROOT}/skills/spec-linking/scripts/mk_unresolved.py" . _workspace/05_link_unresolved.html
+   ```
+4. ERROR(검사 종료 코드 1)가 있으면 `subagent_type: "spec2md:converter-developer"`에 `_workspace/05_link_check.json`의 `errors`와 원인 진단을 맡긴다. 도구를 고친 뒤 1~3을 다시 실행한다. 검사기를 느슨하게 바꿔 통과시키지 않는다.
+5. WARN(`missing_target` 상위)은 `spec-linking` 스킬의 개선 절차에 따라 보고에 요약하고, 점검용 HTML 경로를 함께 알린다. 사용자가 요청할 때만 규칙 개선을 진행한다.
 
 ### 4단계: 주제 묶음(선택)
 

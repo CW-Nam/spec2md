@@ -36,9 +36,15 @@ uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_SKILL_DIR}/scripts/che
 
 ERROR가 있으면 링크 도구 결함이다. 원인을 진단해 `converter-developer`에 넘기고, 검사 기준을 느슨하게 바꿔 통과시키지 않는다.
 
+검사가 끝나면 이어서 해석하지 못한 참조(`resolved`가 아닌 행) 전체를 점검용 HTML로 만든다. 첫 인자는 `raw/`와 `linked/`가 있는 저장소 루트다. 링크는 출력 HTML 기준 상대경로로 raw·linked 파일을 연다. 템플릿 `unresolved_tpl.html`이 스크립트와 같은 폴더에 있어야 한다.
+
+```
+uv run --project "${CLAUDE_PLUGIN_ROOT}" python "${CLAUDE_SKILL_DIR}/scripts/mk_unresolved.py" . _workspace/05_link_unresolved.html
+```
+
 ## 해석 규칙 개선 절차
 
-WARN은 실패가 아니라 해석하지 못한 참조의 목록이다. 줄이려면 다음 순서로 한다.
+WARN은 실패가 아니라 해석하지 못한 참조의 목록이다(전체 목록은 위의 `_workspace/05_link_unresolved.html`). 줄이려면 다음 순서로 한다.
 
 1. 검사 결과의 `missing_target` 상위 항목과 `refs.json`의 해당 행(`from_file`, `line`, `text`)을 연다.
 2. 원문(`raw/`의 해당 파일과 대상 규격)에서 그 번호를 직접 확인한다. 둘 중 하나로 구분한다.

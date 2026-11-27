@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>spec2md 링크 점검: 해석하지 못한 참조</title>
+<style>
+:root{--bg:#fafaf9;--fg:#1c1917;--mute:#78716c;--line:#e7e5e4;--card:#fff;--hl:#fde68a;
+ --mt:#b45309;--mt-bg:#fef3c7;--ms:#1d4ed8;--ms-bg:#dbeafe;--am:#7e22ce;--am-bg:#f3e8ff;--link:#0f62fe}
+@media (prefers-color-scheme:dark){:root{--bg:#1c1917;--fg:#f5f5f4;--mute:#a8a29e;--line:#44403c;--card:#292524;--hl:#854d0e;
+ --mt:#fbbf24;--mt-bg:#451a03;--ms:#93c5fd;--ms-bg:#172554;--am:#d8b4fe;--am-bg:#3b0764;--link:#78a9ff}}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.5 system-ui,"Segoe UI","Malgun Gothic",sans-serif;background:var(--bg);color:var(--fg)}
+header{padding:20px 24px 8px}
+h1{font-size:20px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 12px;cursor:pointer;text-align:left;color:inherit;font:inherit;min-width:150px}
+.chip b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+.chip small{color:var(--mute)}
+.chip[aria-pressed=false]{opacity:.45}
+.legend{color:var(--mute);font-size:12.5px;margin:6px 0 0}
+.legend>span{margin-right:14px}
+.bar{position:sticky;top:0;z-index:2;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 24px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.bar select,.bar input{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:inherit}
+.bar input{min-width:260px;flex:1;max-width:420px}
+.count{color:var(--mute);margin-left:auto;font-variant-numeric:tabular-nums}
+main{padding:0 24px 40px}
+table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:8px}
+th,td{border-bottom:1px solid var(--line);padding:8px 6px;vertical-align:top;text-align:left}
+th{font-size:12px;color:var(--mute);font-weight:600}
+col.c1{width:118px}col.c2{width:230px}col.c3{width:220px}
+.st{display:inline-block;font-size:12px;padding:1px 7px;border-radius:10px;font-weight:600}
+.st.missing_target{color:var(--mt);background:var(--mt-bg)}
+.st.missing_spec{color:var(--ms);background:var(--ms-bg)}
+.st.ambiguous{color:var(--am);background:var(--am-bg)}
+.ref{font-weight:600}
+.tgt{color:var(--mute);font-size:12.5px}
+.loc{font-size:12.5px;word-break:break-all}
+.loc .file{color:var(--mute)}
+a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+.links a{margin-right:10px;white-space:nowrap}
+.body{font:12.5px/1.55 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-word}
+.body mark{background:var(--hl);color:inherit;border-radius:2px;padding:0 1px}
+.more{font:12px system-ui,sans-serif;color:var(--link);cursor:pointer;background:none;border:0;padding:0;margin-left:4px}
+.pager{display:flex;gap:8px;justify-content:center;align-items:center;margin:16px 0}
+.pager button{font:inherit;padding:5px 12px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:inherit;cursor:pointer}
+.pager button:disabled{opacity:.4;cursor:default}
+.empty{color:var(--mute);padding:30px;text-align:center}
+</style>
+</head>
+<body>
+<header>
+<h1>해석하지 못한 참조 점검</h1>
+<p class="sub">linked/*/refs.json에서 <code>resolved</code>가 아닌 참조입니다. 위치 링크를 누르면 VS Code에서 해당 줄이 열립니다(<code>raw</code>는 원문, <code>linked</code>는 링크 사본).</p>
+<div class="chips" id="chips"></div>
+<p class="legend">
+<span><span class="st missing_target">missing_target</span> 대상 규격은 있으나 그 번호가 색인에 없음</span>
+<span><span class="st missing_spec">missing_spec</span> 대상 규격이 코퍼스에 없거나 정할 수 없음</span>
+<span><span class="st ambiguous">ambiguous</span> 같은 번호의 대상이 여러 개</span>
+</p>
+</header>
+<div class="bar">
+<select id="fspec"><option value="">출발 규격: 전체</option></select>
+<select id="ftspec"><option value="">대상 규격: 전체</option></select>
+<select id="fkind"><option value="">종류: 전체</option><option>clause</option><option>table</option><option>figure</option></select>
+<input id="q" type="search" placeholder="참조 텍스트·대상 번호·파일·본문 검색">
+<span class="count" id="count"></span>
+</div>
+<main>
+<table>
+<colgroup><col class="c1"><col class="c2"><col class="c3"><col></colgroup>
+<thead><tr><th>상태</th><th>참조 → 대상</th><th>위치</th><th>본문 줄</th></tr></thead>
+<tbody id="rows"></tbody>
+</table>
+<div class="pager"><button id="prev">이전</button><span id="page"></span><button id="next">다음</button></div>
+</main>
+<script>
+const DATA = /*DATA*/[];
+const STATUSES = ["missing_target", "missing_spec", "ambiguous"];
+const PAGE = 200, WIN = 180;
+const on = new Set(STATUSES);
+let page = 0, view = [];
+const $ = id => document.getElementById(id);
+const ESC = {"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;"};
+const esc = s => String(s).replace(/[&<>"]/g, c => ESC[c]);
+const mark = (s, t) => esc(s).split(esc(t)).join("<mark>" + esc(t) + "</mark>");
+
+function chips() {
+  const n = {};
+  DATA.forEach(r => n[r.s] = (n[r.s] || 0) + 1);
+  $("chips").innerHTML = STATUSES.map(s =>
+    `<button class="chip" data-s="${s}" aria-pressed="${on.has(s)}"><span class="st ${s}">${s}</span><b>${(n[s] || 0).toLocaleString()}</b><small>건</small></button>`).join("");
+  document.querySelectorAll(".chip").forEach(b => b.onclick = () => {
+    const s = b.dataset.s;
+    on.has(s) ? on.delete(s) : on.add(s);
+    b.setAttribute("aria-pressed", on.has(s));
+    page = 0; apply();
+  });
+}
+function options() {
+  const specs = [...new Map(DATA.map(r => [r.c, r.n])).entries()].sort();
+  $("fspec").insertAdjacentHTML("beforeend",
+    specs.map(([c, n]) => `<option value="${c}">TS ${n} (${c})</option>`).join(""));
+  const t = [...new Set(DATA.map(r => r.ts))].sort();
+  $("ftspec").insertAdjacentHTML("beforeend",
+    t.map(s => `<option value="${s || "-"}">${s ? "TS " + s : "(정할 수 없음)"}</option>`).join(""));
+}
+function snippet(body, text) {
+  if (body.length <= WIN * 2 + text.length) return mark(body, text);
+  const c = Math.max(0, body.indexOf(text));
+  const a = Math.max(0, c - WIN), b = Math.min(body.length, c + text.length + WIN);
+  return (a > 0 ? "…" : "") + mark(body.slice(a, b), text) + (b < body.length ? "…" : "") +
+    `<button class="more" data-full>전체 줄 (${body.length.toLocaleString()}자)</button>`;
+}
+function apply() {
+  const fs = $("fspec").value, ft = $("ftspec").value, fk = $("fkind").value;
+  const q = $("q").value.trim().toLowerCase();
+  view = DATA.filter(r => on.has(r.s) && (!fs || r.c === fs) && (!ft || (r.ts || "-") === ft) &&
+    (!fk || r.k === fk) && (!q || (r.t + " " + r.ti + " " + r.f + " " + r.cl + " " + r.b).toLowerCase().includes(q)));
+  const pages = Math.max(1, Math.ceil(view.length / PAGE));
+  page = Math.min(page, pages - 1);
+  $("count").textContent = `${view.length.toLocaleString()} / ${DATA.length.toLocaleString()}건`;
+  $("page").textContent = `${page + 1} / ${pages}`;
+  $("prev").disabled = page === 0;
+  $("next").disabled = page >= pages - 1;
+  const slice = view.slice(page * PAGE, page * PAGE + PAGE);
+  $("rows").innerHTML = slice.length ? slice.map((r, j) => `<tr>
+    <td><span class="st ${r.s}">${r.s}</span></td>
+    <td><div class="ref">${esc(r.t)}</div><div class="tgt">→ ${r.ts ? "TS " + esc(r.ts) : "(규격 불명)"} · ${r.k} ${esc(r.ti)}</div></td>
+    <td class="loc"><div>TS ${esc(r.n)} §${esc(r.cl)}</div><div class="file">${esc(r.c)}/${esc(r.f)}</div>
+      <div class="links"><a href="${esc(r.ur)}">raw:${r.l}</a><a href="${esc(r.ul)}">linked:${r.ll}</a></div></td>
+    <td class="body" data-i="${page * PAGE + j}">${snippet(r.b, r.t)}</td></tr>`).join("")
+    : `<tr><td colspan="4" class="empty">조건에 맞는 참조가 없습니다.</td></tr>`;
+}
+$("rows").addEventListener("click", e => {
+  if (!e.target.matches("[data-full]")) return;
+  const td = e.target.closest("td"), r = view[+td.dataset.i];
+  td.innerHTML = mark(r.b, r.t);
+});
+["fspec", "ftspec", "fkind"].forEach(id => $(id).onchange = () => { page = 0; apply(); });
+$("q").oninput = () => { page = 0; apply(); };
+$("prev").onclick = () => { page--; apply(); scrollTo(0, 0); };
+$("next").onclick = () => { page++; apply(); scrollTo(0, 0); };
+chips(); options(); apply();
+</script>
+</body>
+</html>
